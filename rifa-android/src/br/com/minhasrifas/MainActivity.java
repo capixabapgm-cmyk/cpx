@@ -126,6 +126,7 @@ public class MainActivity extends Activity {
         LinearLayout.LayoutParams left=new LinearLayout.LayoutParams(0,dp(40),1); left.setMargins(0,dp(4),dp(4),dp(4)); list.setLayoutParams(left);
         LinearLayout.LayoutParams right=new LinearLayout.LayoutParams(0,dp(40),1); right.setMargins(dp(4),dp(4),0,dp(4)); editButton.setLayoutParams(right);
         button(r.has("webId")?"Link e pedidos online ("+pendingCount(r)+")":"Gerar link para pedidos",body,()->onlineMenu(r));
+        button("Pix / copiar chave",body,()->new AlertDialog.Builder(this).setTitle("Pagamento por Pix").setMessage(PixInfo.instructions()).setNegativeButton("Fechar",null).setPositiveButton("Copiar chave",(d,w)->{android.content.ClipboardManager clipboard=(android.content.ClipboardManager)getSystemService(CLIPBOARD_SERVICE);clipboard.setPrimaryClip(ClipData.newPlainText("Chave Pix",PixInfo.KEY));toast("Chave Pix copiada.");}).show());
         if(!r.has("winner") && !ready) button("+ Comprador / vários números",body,()->bulkSale(r));
         body.addView(label("Números • Verde = vendido",14));
         GridLayout grid=new GridLayout(this); body.addView(grid,new LinearLayout.LayoutParams(-1,-2));

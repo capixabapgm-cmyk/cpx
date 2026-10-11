@@ -38,6 +38,8 @@ npx wrangler deploy
 
 ## Como funciona
 
+A página inclui nome do destinatário e chave Pix com botão Copiar chave antes e depois do envio do pedido. Destinatário e chave foram fornecidos pelo organizador; o cliente deve conferir o destinatário no banco. Copiar a chave ou enviar um pedido não marca pagamento no app. Valor e disponibilidade são combinados com o organizador.
+
 - O cliente preenche nome e telefone e seleciona até 100 números disponíveis por pedido.
 - Enviar registra um pedido **pendente**, sem reservar números nem confirmar venda ou pagamento.
 - O aplicativo consulta pedidos automaticamente enquanto aberto e conectado, aproximadamente a cada 30 segundos por rifa publicada. Com várias rifas, elas são consultadas em rodízio.

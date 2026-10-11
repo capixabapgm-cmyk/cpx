@@ -7,6 +7,7 @@ function render(){
   el('name').textContent=raffle.name;el('description').textContent=raffle.description;
   el('image').hidden=!raffle.image;if(raffle.image)el('image').src=raffle.image;
   el('form').hidden=raffle.closed;
+  el('pix').hidden=raffle.closed;
   if(raffle.closed){el('message').textContent='Esta rifa já foi encerrada.';return;}
   const sold=new Set(raffle.sold);selected=new Set([...selected].filter(n=>!sold.has(n)));
   const fragment=document.createDocumentFragment();
@@ -22,6 +23,11 @@ async function load(){
   try{const response=await fetch(`/api/raffles/${id}`,{cache:'no-store'});const data=await response.json();if(!response.ok)throw new Error(data.error);raffle=data;render();el('message').textContent='';}catch(e){el('message').textContent=e.message||'Não foi possível carregar. Tente novamente.';}finally{el('refresh').disabled=false;}
 }
 el('refresh').onclick=load;
+el('copy-pix').onclick=async()=>{
+  const key=el('pix-key');
+  try {await navigator.clipboard.writeText(key.value);el('pix-feedback').textContent='Chave Pix copiada.';}
+  catch {key.focus();key.select();key.setSelectionRange(0,key.value.length);let copied=false;try{copied=document.execCommand('copy');}catch{}el('pix-feedback').textContent=copied?'Chave Pix copiada.':'A chave está selecionada. Toque e segure para copiar.';}
+};
 el('buyer').oninput=el('phone').oninput=()=>{pendingId=null;};
 el('order').onsubmit=async event=>{
   event.preventDefault();if(sending)return;

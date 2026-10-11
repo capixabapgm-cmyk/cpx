@@ -17,6 +17,6 @@ public final class ReceiptSupport {
             (description.isEmpty()?"":"\nDescrição: "+description)+"\nComprador: "+name+
             (phone.isEmpty()?"":"\nTelefone: "+phone)+"\nQuantidade: "+new TreeSet<Integer>(selected).size()+
             "\nNúmeros: "+numbers(selected)+"\n\nEmitido em: "+issuedAt+
-            "\nRegistro dos números cadastrados nesta rifa. Não comprova pagamento.";
+            "\nRegistro dos números cadastrados nesta rifa. Não comprova pagamento.\n\n"+PixInfo.instructions();
     }
 }

@@ -36,6 +36,10 @@ Instale `Minhas-Rifas-v1.4.apk` como atualização. Mantém assinatura, pacote e
 
 ## Compilar
 
+## Atualização 1.6
+
+Botão Pix / copiar chave na rifa e dados Pix no comprovante compartilhado. Destinatário Francisco Claudemir da Silva Andrade, chave 78216834268, conforme fornecidos pelo organizador. Conferir o destinatário no banco; não há confirmação automática, cálculo de valor ou alteração automática de pagamento. Instale `Minhas-Rifas-v1.6.apk` como atualização sem desinstalar; mantém dados, assinatura e pacote, versionCode 7.
+
 ## Atualização 1.5
 
 Integração com o serviço `rifa-online` para publicar um link por rifa, receber pedidos pendentes, aceitar como não pagos ou recusar. Configure o endereço HTTPS da hospedagem ativada no Cloudflare. Sem hospedagem configurada, as funções locais continuam disponíveis. O app sincroniza enquanto aberto e conectado; não usa notificações push ou serviço em segundo plano. A sincronização atualiza a disponibilidade e guarda os pedidos para consulta.
