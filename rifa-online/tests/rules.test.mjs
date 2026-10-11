@@ -1,0 +1,3 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';import {numbers,raffleData} from '../src/rules.mjs';
+test('Números são únicos e ordenados; entradas inválidas são rejeitadas',()=>{assert.deepEqual(numbers([3,1,3],10),[1,3]);for(const n of [[0],[-1],[11],[1.5],['2'],null])assert.throws(()=>numbers(n,10));});
+test('Imagem exige formato JPEG embutido e não aceita URLs ou HTML',()=>{assert.throws(()=>raffleData({name:'Rifa',description:'',total:10,sold:[],closed:false,image:'https://exemplo.com'}));assert.throws(()=>raffleData({name:'Rifa',description:'',total:10,sold:[],closed:false,image:'<script>'}));});

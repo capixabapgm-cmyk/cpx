@@ -1,0 +1,1 @@
+{"name":"minhas-rifas-online","private":true,"type":"module","engines":{"node":">=24"},"scripts":{"test":"node tests/api.test.mjs && node tests/rules.test.mjs","deploy":"wrangler deploy","db:create":"wrangler d1 create minhas-rifas","db:migrate":"wrangler d1 migrations apply DB --remote"},"devDependencies":{"wrangler":"^4.0.0"}}
