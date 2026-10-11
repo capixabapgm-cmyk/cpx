@@ -13,10 +13,13 @@ public final class ReceiptSupport {
         return s.toString();
     }
     public static String receipt(String raffle,String description,String name,String phone,Collection<Integer> selected,String issuedAt) {
+        return receipt(raffle,description,name,phone,selected,issuedAt,PixInfo.NAME,PixInfo.KEY);
+    }
+    public static String receipt(String raffle,String description,String name,String phone,Collection<Integer> selected,String issuedAt,String pixName,String pixKey) {
         return "COMPROVANTE DE PARTICIPAÇÃO\n\nRifa: "+raffle+
             (description.isEmpty()?"":"\nDescrição: "+description)+"\nComprador: "+name+
             (phone.isEmpty()?"":"\nTelefone: "+phone)+"\nQuantidade: "+new TreeSet<Integer>(selected).size()+
             "\nNúmeros: "+numbers(selected)+"\n\nEmitido em: "+issuedAt+
-            "\nRegistro dos números cadastrados nesta rifa. Não comprova pagamento.\n\n"+PixInfo.instructions();
+            "\nRegistro dos números cadastrados nesta rifa. Não comprova pagamento.\n\n"+PixInfo.instructions(pixName,pixKey);
     }
 }

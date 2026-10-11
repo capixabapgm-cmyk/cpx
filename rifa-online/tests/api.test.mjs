@@ -5,7 +5,7 @@ import {readFileSync} from 'node:fs';
 import worker from '../src/worker.mjs';
 const raffleId='12345678-1234-1234-1234-123456789012',token='a'.repeat(64);
 const oid=n=>`00000000-0000-0000-0000-${String(n).padStart(12,'0')}`;
-function environment(){
+export function environment(){
   const sqlite=new DatabaseSync(':memory:');sqlite.exec(readFileSync(new URL('../migrations/0001_initial.sql',import.meta.url),'utf8'));
   const DB={prepare(sql){let args=[];return {bind(...values){args=values;return this;},async first(){return sqlite.prepare(sql).get(...args)??null;},async all(){return {results:sqlite.prepare(sql).all(...args)};},async run(){return {meta:{changes:Number(sqlite.prepare(sql).run(...args).changes)}};}};},async batch(statements){sqlite.exec('BEGIN');try{const values=[];for(const statement of statements)values.push(await statement.run());sqlite.exec('COMMIT');return values;}catch(e){sqlite.exec('ROLLBACK');throw e;}}};
   return {DB,ASSETS:{fetch:()=>new Response('page')},sqlite};

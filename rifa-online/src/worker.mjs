@@ -1,4 +1,5 @@
 import {ApiError,text,raffleData,requestData,publicRaffle} from './rules.mjs';
+import {accountRoute,sessionUser} from './accounts.mjs';
 const idPattern=/^[a-f0-9-]{36}$/;
 const headers={'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer'};
 const json=(data,status=200)=>new Response(JSON.stringify(data),{status,headers});
@@ -9,13 +10,14 @@ async function body(request){
   try {const data=JSON.parse(value);if(!data||Array.isArray(data)||typeof data!=='object')throw 0;return data;}catch{throw new ApiError('Dados inválidos.');}
 }
 function token(request){const value=request.headers.get('Authorization')?.replace(/^Bearer /,'');if(!value||!/^[a-f0-9]{64}$/.test(value))throw new ApiError('Acesso não autorizado.',401);return value;}
-async function owner(request,row){if(!row||await hash(token(request))!==row.owner_hash)throw new ApiError('Acesso não autorizado.',401);}
+async function owner(request,row,env){if(!row||await hash(token(request))!==row.owner_hash)throw new ApiError('Acesso não autorizado.',401);if(row.user_id){const user=await sessionUser(request,env);if(row.user_id!==user.id)throw new ApiError('Rifa de outra conta.',403);if(request.method==='PUT'){const backup=await env.DB.prepare('SELECT revision FROM backups WHERE user_id=?').bind(user.id).first();if(Number(request.headers.get('X-Backup-Revision'))!==(backup?.revision||0))throw new ApiError('Dados atualizados em outro aparelho. Sincronize a conta antes de publicar.',409);}}}
 function requestRow(row){return {...row,numbers:JSON.parse(row.numbers)};}
 export default {
   async fetch(request,env){
     try {
       const url=new URL(request.url);
       if(!url.pathname.startsWith('/api/'))return env.ASSETS.fetch(request);
+      if(/^\/api\/(auth|account|admin)\//.test(url.pathname))return json(await accountRoute(request,env,url));
       if(url.pathname==='/api/health')return json({ok:true,service:'minhas-rifas',version:1});
       const match=url.pathname.match(/^\/api\/raffles\/([a-f0-9-]{36})(?:\/(requests)(?:\/([a-f0-9-]{36})\/(accept|reject))?)?$/);
       if(!match)throw new ApiError('Página não encontrada.',404);
@@ -25,15 +27,17 @@ export default {
       if(!requests&&request.method==='PUT'){
         const credentials=token(request),data=raffleData(await body(request));
         if(!row){
-          await env.DB.prepare('INSERT INTO raffles(id,owner_hash,name,description,total,sold,closed,image,updated_at) VALUES(?,?,?,?,?,?,?,?,?)').bind(id,await hash(credentials),data.name,data.description,data.total,JSON.stringify(data.sold),+data.closed,data.image,new Date().toISOString()).run();
+          if(env.ADMIN_SETUP_KEY){const user=await sessionUser(request,env);await env.DB.prepare('INSERT INTO raffles(id,owner_hash,name,description,total,sold,closed,image,updated_at,user_id,pix_name,pix_key) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)').bind(id,await hash(credentials),data.name,data.description,data.total,JSON.stringify(data.sold),+data.closed,data.image,new Date().toISOString(),user.id,user.pix_name,user.pix_key).run();}
+          else await env.DB.prepare('INSERT INTO raffles(id,owner_hash,name,description,total,sold,closed,image,updated_at) VALUES(?,?,?,?,?,?,?,?,?)').bind(id,await hash(credentials),data.name,data.description,data.total,JSON.stringify(data.sold),+data.closed,data.image,new Date().toISOString()).run();
         }else{
-          await owner(request,row);
+          await owner(request,row,env);
           // The device must acknowledge accepted orders before replacing availability.
           const expected=Number(request.headers.get('If-Match'));
           if(expected!==row.revision)throw new ApiError('A rifa mudou online. Atualize os pedidos antes de publicar novamente.',409);
           if(data.total!==row.total)throw new ApiError('A quantidade de números não pode mudar.',409);
           const result=await env.DB.prepare('UPDATE raffles SET name=?,description=?,sold=?,closed=?,image=?,revision=revision+1,updated_at=? WHERE id=? AND revision=?').bind(data.name,data.description,JSON.stringify(data.sold),+data.closed,data.image,new Date().toISOString(),id,expected).run();
           if(!result.meta.changes)throw new ApiError('A rifa mudou online. Sincronize novamente.',409);
+          if(row.user_id){const user=await sessionUser(request,env);await env.DB.prepare('UPDATE raffles SET pix_name=?,pix_key=? WHERE id=? AND user_id=?').bind(user.pix_name,user.pix_key,id,user.id).run();}
         }
         row=await env.DB.prepare('SELECT * FROM raffles WHERE id=?').bind(id).first();return json(publicRaffle(row));
       }
@@ -53,7 +57,7 @@ export default {
         await env.DB.prepare('INSERT INTO requests(id,raffle_id,name,phone,numbers,created_at) VALUES(?,?,?,?,?,?)').bind(input.id,id,data.name,data.phone,JSON.stringify(data.numbers),new Date().toISOString()).run();
         return json({id:input.id,status:'pending'},201);
       }
-      await owner(request,row);
+      await owner(request,row,env);
       if(requests&&!requestId&&request.method==='GET'){
         const rows=await env.DB.prepare('SELECT * FROM requests WHERE raffle_id=? ORDER BY created_at DESC LIMIT 1200').bind(id).all();
         return json({raffle:publicRaffle(row),requests:rows.results.map(requestRow)});

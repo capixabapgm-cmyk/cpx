@@ -1,0 +1,11 @@
+CREATE TABLE users (id TEXT PRIMARY KEY,email TEXT NOT NULL UNIQUE,name TEXT NOT NULL,password_hash TEXT NOT NULL,salt TEXT NOT NULL,role TEXT NOT NULL DEFAULT 'organizer' CHECK(role IN ('admin','organizer')),blocked INTEGER NOT NULL DEFAULT 0,pix_name TEXT NOT NULL DEFAULT '',pix_key TEXT NOT NULL DEFAULT '',created_at TEXT NOT NULL);
+CREATE UNIQUE INDEX one_admin ON users(role) WHERE role='admin';
+CREATE TABLE sessions (token_hash TEXT PRIMARY KEY,user_id TEXT NOT NULL REFERENCES users(id),expires_at TEXT NOT NULL);
+CREATE INDEX sessions_user ON sessions(user_id);
+CREATE TABLE invites (id TEXT PRIMARY KEY,code_hash TEXT NOT NULL UNIQUE,email TEXT NOT NULL DEFAULT '',expires_at TEXT NOT NULL,used_by TEXT REFERENCES users(id),revoked INTEGER NOT NULL DEFAULT 0,created_at TEXT NOT NULL);
+CREATE TABLE backups (user_id TEXT PRIMARY KEY REFERENCES users(id),revision INTEGER NOT NULL DEFAULT 1,data TEXT NOT NULL,updated_at TEXT NOT NULL);
+CREATE TABLE auth_rate (key TEXT PRIMARY KEY,window INTEGER NOT NULL,count INTEGER NOT NULL DEFAULT 0);
+ALTER TABLE raffles ADD COLUMN user_id TEXT REFERENCES users(id);
+ALTER TABLE raffles ADD COLUMN pix_name TEXT;
+ALTER TABLE raffles ADD COLUMN pix_key TEXT;
+CREATE INDEX raffles_user ON raffles(user_id);

@@ -1,10 +1,14 @@
 # Minhas Rifas — pedidos pela internet
 
+## Contas e convites — versão 1.7
+
+Login por e-mail/senha, cadastro com convite de uso único e validade de sete dias, painel administrativo para gerar/cancelar convites e bloquear usuários, backup por conta e Pix individual. [Guia de ativação sem apagar os dados existentes](ATIVAR-CONTAS.md). É necessário executar a migração 0002 e configurar o segredo ADMIN_SETUP_KEY antes de usar o login.
+
 Página móvel e API para o APK Minhas Rifas 1.5. GitHub armazena o código; Cloudflare Workers + D1 hospedam a página e recebem os pedidos. GitHub Pages sozinho não executa a API.
 
 ## Estado desta entrega
 
-Código e APK preparados e testados localmente. **Não há hospedagem ativa ainda**: o titular precisa criar sua conta Cloudflare e ativar o projeto. Nenhuma conta paga ou assinatura é criada pelo projeto.
+O serviço de pedidos já foi publicado pelo titular no Cloudflare. A versão 1.7 foi preparada e testada localmente, mas as contas exigem executar a migração 0002 e configurar ADMIN_SETUP_KEY. Nenhum plano pago é ativado pelo projeto.
 
 ## Ativar gratuitamente pelo painel
 
@@ -51,9 +55,9 @@ A página inclui nome do destinatário e chave Pix com botão Copiar chave antes
 
 ## Dados e acesso
 
-A página só recebe nome e telefone de quem envia pedido e mostra a disponibilidade dos números. Consultar pedidos ou aprová-los exige uma chave privada por rifa, criada e guardada no celular; o servidor guarda apenas seu hash. A chave não está no link público ou no GitHub. Dados de compradores manuais não são enviados ao servidor: são publicados apenas os números ocupados, nome/descrição da rifa e sua imagem.
+A página só recebe nome e telefone de quem envia pedido e mostra a disponibilidade dos números. Consultar pedidos ou aprová-los exige uma chave privada por rifa, criada e guardada no celular; o servidor guarda apenas seu hash. A chave não está no link público ou no GitHub. A página pública recebe apenas os números ocupados, nome/descrição da rifa e sua imagem. Na versão 1.7, dados completos de compradores também são salvos no backup privado da conta, sem acesso público.
 
-Este teste usa um celular organizador por rifa. Desinstalar ou limpar o app perde a chave e os dados locais. O banco online guarda pedidos, não um backup completo das vendas manuais. Preserve a instalação atual e exporte seus compradores. Não copie a chave de assinatura do APK ou dados privados para o repositório público.
+Este teste usa um celular organizador por rifa. Desinstalar ou limpar o app perde a chave e os dados locais. Nas versões anteriores à 1.7, o banco online guarda apenas pedidos. A versão 1.7, após ativada, também mantém o backup privado por conta. Preserve a instalação atual e exporte seus compradores. Não copie a chave de assinatura do APK ou dados privados para o repositório público.
 
 ## Plano gratuito e limites
 

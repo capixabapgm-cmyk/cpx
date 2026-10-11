@@ -23,20 +23,26 @@ public class MainActivity extends Activity {
     Handler onlineHandler=new Handler();
     boolean onlineBusy=false,foreground=false,viewingRequests=false;
     int onlineCursor=0;
-    Runnable onlinePoll=new Runnable(){public void run(){if(!foreground)return;for(int i=0;i<raffles.length();i++){JSONObject r=raffles.optJSONObject((onlineCursor+i)%raffles.length());if(r.has("webId")){onlineCursor=(onlineCursor+i+1)%raffles.length();syncOnline(r,false,null);break;}}onlineHandler.postDelayed(this,30000);}};
+    JSONObject profile;
+    boolean accountBusy=false;
+    long editCounter=0;
+    Runnable backupJob=()->accountSync(false);
+    Runnable onlinePoll=new Runnable(){public void run(){if(!foreground||profile==null)return;accountSync(false);for(int i=0;i<raffles.length();i++){JSONObject r=raffles.optJSONObject((onlineCursor+i)%raffles.length());if(r.has("webId")){onlineCursor=(onlineCursor+i+1)%raffles.length();syncOnline(r,false,null);break;}}onlineHandler.postDelayed(this,30000);}};
     final int green = Color.rgb(24,91,73), ink = Color.rgb(28,43,38);
     int dp(int n) { return (int)(n*getResources().getDisplayMetrics().density); }
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
         getWindow().setStatusBarColor(green);
         getWindow().setNavigationBarColor(Color.WHITE);
-        try { raffles = new JSONArray(getPreferences(0).getString("rifas", "[]")); }
+        try {String saved=getPreferences(0).getString("accountProfile","");if(!saved.isEmpty()){profile=new JSONObject(saved);OnlineClient.session=getPreferences(0).getString("accountSession","");raffles=new JSONArray(getPreferences(0).getString(accountKey(),"[]"));OnlineClient.backupRevision=getPreferences(0).getInt(accountKey()+":revision",0);}}
         catch (Exception e) { new AlertDialog.Builder(this).setMessage("Não foi possível ler os dados salvos.").setPositiveButton("OK",null).show(); }
         migratePayments();
-        home();
+        if(profile==null)authScreen(false);else home();
     }
     boolean save() {
-        if(getPreferences(0).edit().putString("rifas",raffles.toString()).commit()) {if(foreground&&!onlineBusy){onlineHandler.removeCallbacks(onlinePoll);onlineHandler.postDelayed(onlinePoll,1500);}return true;}
+        if(profile==null)return false;
+        try{for(int i=0;i<raffles.length();i++){JSONObject r=raffles.getJSONObject(i);r.put("accountId",profile.getString("id"));if(!r.has("id"))r.put("id",UUID.randomUUID().toString());}}catch(Exception e){return false;}
+        if(getPreferences(0).edit().putString(accountKey(),raffles.toString()).putBoolean(accountKey()+":dirty",true).commit()) {editCounter++;onlineHandler.removeCallbacks(backupJob);onlineHandler.postDelayed(backupJob,2000);if(foreground&&!onlineBusy){onlineHandler.removeCallbacks(onlinePoll);onlineHandler.postDelayed(onlinePoll,1500);}return true;}
         toast("Não foi possível salvar. Tente novamente."); return false;
     }
     void migratePayments() {
@@ -86,6 +92,9 @@ public class MainActivity extends Activity {
     String number(int n) { return String.format(Locale.US,"%03d",n); }
     void home() {
         current=null; screen("Minhas Rifas",false);
+        if(profile==null){authScreen(false);return;}
+        body.addView(label(profile.optString("name")+" • "+profile.optString("email"),13));
+        button("Minha conta / Pix / sincronizar",body,()->accountMenu());
         body.addView(label("Organize suas rifas, número por número.",16));
         button("+ Adicionar nova rifa",body,()->edit(null));
         button("Configurar pedidos pela internet",body,()->onlineSettings());
@@ -126,7 +135,7 @@ public class MainActivity extends Activity {
         LinearLayout.LayoutParams left=new LinearLayout.LayoutParams(0,dp(40),1); left.setMargins(0,dp(4),dp(4),dp(4)); list.setLayoutParams(left);
         LinearLayout.LayoutParams right=new LinearLayout.LayoutParams(0,dp(40),1); right.setMargins(dp(4),dp(4),0,dp(4)); editButton.setLayoutParams(right);
         button(r.has("webId")?"Link e pedidos online ("+pendingCount(r)+")":"Gerar link para pedidos",body,()->onlineMenu(r));
-        button("Pix / copiar chave",body,()->new AlertDialog.Builder(this).setTitle("Pagamento por Pix").setMessage(PixInfo.instructions()).setNegativeButton("Fechar",null).setPositiveButton("Copiar chave",(d,w)->{android.content.ClipboardManager clipboard=(android.content.ClipboardManager)getSystemService(CLIPBOARD_SERVICE);clipboard.setPrimaryClip(ClipData.newPlainText("Chave Pix",PixInfo.KEY));toast("Chave Pix copiada.");}).show());
+        button("Pix / copiar chave",body,()->new AlertDialog.Builder(this).setTitle("Pagamento por Pix").setMessage(PixInfo.instructions(profile.optString("pixName"),profile.optString("pixKey"))).setNegativeButton("Fechar",null).setPositiveButton("Copiar chave",(d,w)->{if(profile.optString("pixKey").isEmpty()){toast("Configure seu Pix em Minha conta.");return;}android.content.ClipboardManager clipboard=(android.content.ClipboardManager)getSystemService(CLIPBOARD_SERVICE);clipboard.setPrimaryClip(ClipData.newPlainText("Chave Pix",profile.optString("pixKey")));toast("Chave Pix copiada.");}).show());
         if(!r.has("winner") && !ready) button("+ Comprador / vários números",body,()->bulkSale(r));
         body.addView(label("Números • Verde = vendido",14));
         GridLayout grid=new GridLayout(this); body.addView(grid,new LinearLayout.LayoutParams(-1,-2));
@@ -239,16 +248,84 @@ public class MainActivity extends Activity {
         ArrayList<Integer> nums=groups(r).get(key);if(nums==null||nums.isEmpty()){toast("Nenhum número encontrado para este comprador.");return;}
         JSONObject buyer=r.optJSONObject("sales").optJSONObject(""+nums.get(0));
         ArrayList<Integer> paidList=new ArrayList<>(), unpaidList=new ArrayList<>();for(int n:nums){if(r.optJSONObject("sales").optJSONObject(""+n).optBoolean("paid",true))paidList.add(n);else unpaidList.add(n);}
-        String text=ReceiptSupport.receipt(r.optString("name"),r.optString("description"),buyer.optString("name"),buyer.optString("phone"),nums,new SimpleDateFormat("dd/MM/yyyy HH:mm",Locale.getDefault()).format(new Date()))+"\n\nPagamento: "+paymentStatus(r,nums)+"\nNúmeros pagos: "+(paidList.isEmpty()?"Nenhum":ReceiptSupport.numbers(paidList))+"\nNúmeros não pagos: "+(unpaidList.isEmpty()?"Nenhum":ReceiptSupport.numbers(unpaidList))+"\nSomente os números pagos participam do sorteio.";
+        String text=ReceiptSupport.receipt(r.optString("name"),r.optString("description"),buyer.optString("name"),buyer.optString("phone"),nums,new SimpleDateFormat("dd/MM/yyyy HH:mm",Locale.getDefault()).format(new Date()),profile.optString("pixName"),profile.optString("pixKey"))+"\n\nPagamento: "+paymentStatus(r,nums)+"\nNúmeros pagos: "+(paidList.isEmpty()?"Nenhum":ReceiptSupport.numbers(paidList))+"\nNúmeros não pagos: "+(unpaidList.isEmpty()?"Nenhum":ReceiptSupport.numbers(unpaidList))+"\nSomente os números pagos participam do sorteio.";
         TextView content=label(text,15);content.setPadding(dp(18),dp(8),dp(18),dp(8));content.setTextIsSelectable(true);ScrollView scroll=new ScrollView(this);scroll.addView(content);
         new AlertDialog.Builder(this).setTitle("Comprovante").setView(scroll).setNegativeButton("Fechar",null).setPositiveButton("Compartilhar",(d,w)->{
             Intent share=new Intent(Intent.ACTION_SEND);share.setType("text/plain");share.putExtra(Intent.EXTRA_SUBJECT,"Comprovante • "+r.optString("name"));share.putExtra(Intent.EXTRA_TEXT,text);
             try {startActivity(Intent.createChooser(share,"Enviar comprovante pelo WhatsApp ou outro app"));}catch(ActivityNotFoundException e){toast("Nenhum aplicativo disponível para compartilhar.");}
         }).show();
     }
+    String accountKey(){return "rifas:"+profile.optString("id");}
+    void authScreen(boolean register) {
+        current=null;screen(register?"Criar conta por convite":"Entrar na sua conta",false);
+        body.addView(label("Cada conta tem suas próprias rifas e chave Pix. Para criar conta, use o convite recebido junto com o APK.",14));
+        EditText name=register?field(body,"Seu nome","",1):null;
+        EditText email=field(body,"E-mail","",android.text.InputType.TYPE_CLASS_TEXT|android.text.InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS);
+        EditText password=field(body,"Senha (mínimo 12 caracteres)","",android.text.InputType.TYPE_CLASS_TEXT|android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        EditText invite=register?field(body,"Código de convite","",1):null;
+        button(register?"Criar minha conta":"Entrar",body,()->{
+            if(accountBusy||onlineBusy){toast("Aguarde a conexão atual.");return;}
+            if(password.getText().length()<12){password.setError("Use pelo menos 12 caracteres");return;}
+            try {JSONObject data=new JSONObject().put("email",email.getText().toString().trim()).put("password",password.getText().toString());if(register)data.put("name",name.getText().toString().trim()).put("invite",invite.getText().toString().trim());
+                accountTask(()->OnlineClient.call(OnlineClient.DEFAULT_BASE,register?"/api/auth/register":"/api/auth/login","POST",null,-1,data),response->{try{profile=response.getJSONObject("user");OnlineClient.session=response.getString("token");getPreferences(0).edit().putString("accountProfile",profile.toString()).putString("accountSession",OnlineClient.session).commit();raffles=new JSONArray(getPreferences(0).getString(accountKey(),"[]"));OnlineClient.backupRevision=getPreferences(0).getInt(accountKey()+":revision",0);password.setText("");home();accountSync(true);}catch(Exception e){toast("Não foi possível abrir a conta.");}},true);
+            }catch(Exception e){toast("Confira os dados.");}
+        });
+        button(register?"Já tenho conta":"Criar conta por convite",body,()->authScreen(!register));
+        body.addView(label("Administrador: ative sua conta pelo painel web antes de entrar. Os dados da versão anterior permanecem neste aparelho, aguardando importação para sua conta.",12));
+    }
+    void accountTask(OnlineWork work,OnlineResult result,boolean visible) {
+        if(accountBusy){if(visible)toast("Aguarde a sincronização da conta.");return;}accountBusy=true;
+        new Thread(()->{try{JSONObject response=work.run();runOnUiThread(()->{accountBusy=false;result.done(response);});}catch(Exception e){runOnUiThread(()->{accountBusy=false;if(visible)toast(e.getMessage()==null?"Não foi possível conectar.":e.getMessage());});}}).start();
+    }
+    void accountMenu() {
+        ArrayList<String> options=new ArrayList<>(Arrays.asList("Sincronizar meus dados","Configurar meu Pix","Restaurar dados da nuvem","Entrar novamente"));
+        boolean admin="admin".equals(profile.optString("role"));if(admin){options.add("Importar rifas da versão anterior");options.add("Painel de convites e usuários");}options.add("Sair da conta");
+        new AlertDialog.Builder(this).setTitle(profile.optString("email")).setItems(options.toArray(new String[0]),(d,index)->{
+            String action=options.get(index);if(action.startsWith("Sincronizar"))accountSync(true);else if(action.startsWith("Configurar"))accountPix();else if(action.startsWith("Restaurar"))new AlertDialog.Builder(this).setMessage("Substituir os dados desta conta pelos da nuvem? Uma cópia local das alterações atuais será preservada neste aparelho.").setNegativeButton("Cancelar",null).setPositiveButton("Restaurar",(a,b)->restoreBackup(true)).show();else if(action.startsWith("Entrar"))authScreen(false);else if(action.startsWith("Importar"))importLegacy();else if(action.startsWith("Painel"))startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse(OnlineClient.DEFAULT_BASE+"/admin.html")));else logoutAccount();
+        }).show();
+    }
+    void accountPix() {
+        LinearLayout form=column();form.setPadding(dp(16),dp(8),dp(16),dp(8));EditText name=field(form,"Nome do destinatário",profile.optString("pixName"),1),key=field(form,"Sua chave Pix",profile.optString("pixKey"),1);
+        new AlertDialog.Builder(this).setTitle("Pix da minha conta").setView(form).setNegativeButton("Cancelar",null).setPositiveButton("Salvar",(d,w)->{try {JSONObject data=new JSONObject().put("name",name.getText().toString().trim()).put("key",key.getText().toString().trim());accountTask(()->OnlineClient.call(OnlineClient.DEFAULT_BASE,"/api/account/pix","PUT",OnlineClient.session,-1,data),response->{try{profile=response.getJSONObject("user");getPreferences(0).edit().putString("accountProfile",profile.toString()).commit();toast("Pix da sua conta atualizado.");onlineHandler.removeCallbacks(onlinePoll);onlineHandler.postDelayed(onlinePoll,1000);}catch(Exception e){toast("Erro ao salvar Pix.");}},true);}catch(Exception e){toast("Confira os dados.");}}).show();
+    }
+    JSONArray backupSnapshot()throws Exception {
+        JSONArray snapshot=new JSONArray(raffles.toString());for(int i=0;i<snapshot.length();i++){JSONObject copy=snapshot.getJSONObject(i),original=raffles.getJSONObject(i);String data=publicSnapshot(original).optString("image");if(data.isEmpty())data=original.optString("imageData");copy.put("imageData",data);copy.remove("image");}return snapshot;
+    }
+    void accountSync(boolean visible) {
+        if(profile==null||accountBusy||OnlineClient.session.isEmpty())return;
+        final String scope=accountKey();final long counter=editCounter;
+        if(!getPreferences(0).getBoolean(scope+":dirty",false)){restoreBackup(false);return;}
+        try {JSONObject data=new JSONObject().put("revision",getPreferences(0).getInt(scope+":revision",0)).put("raffles",backupSnapshot());
+            accountTask(()->OnlineClient.call(OnlineClient.DEFAULT_BASE,"/api/account/backup","PUT",OnlineClient.session,-1,data),response->{if(profile==null||!scope.equals(accountKey()))return;OnlineClient.backupRevision=response.optInt("revision");getPreferences(0).edit().putInt(scope+":revision",response.optInt("revision")).putBoolean(scope+":dirty",counter!=editCounter).commit();if(visible)toast("Dados da sua conta salvos online.");},visible);
+        }catch(Exception e){if(visible)toast("Não foi possível preparar o backup. Os dados locais foram preservados.");}
+    }
+    void restoreBackup(boolean force) {
+        if(profile==null||accountBusy)return;final String scope=accountKey();final long counter=editCounter;
+        accountTask(()->OnlineClient.call(OnlineClient.DEFAULT_BASE,"/api/account/backup","GET",OnlineClient.session,-1,null),response->{
+            if(profile==null||!scope.equals(accountKey())||counter!=editCounter){if(force)toast("Há alterações locais recentes. Sincronize novamente.");return;}
+            int revision=response.optInt("revision");if(!force&&revision==getPreferences(0).getInt(scope+":revision",0))return;
+            try {JSONArray restored=response.getJSONArray("raffles");for(int i=0;i<restored.length();i++){JSONObject r=restored.getJSONObject(i);String data=r.optString("imageData");if(!data.isEmpty()){byte[] bytes=android.util.Base64.decode(data.substring(data.indexOf(',')+1),android.util.Base64.DEFAULT);File f=new File(getFilesDir(),"restaurada-"+UUID.randomUUID()+".jpg");try(OutputStream out=new FileOutputStream(f)){out.write(bytes);}r.put("image",f.getAbsolutePath());}}
+                android.content.SharedPreferences.Editor prefs=getPreferences(0).edit();if(force)prefs.putString(scope+":antes-restauracao",raffles.toString());if(!prefs.putString(scope,restored.toString()).putInt(scope+":revision",revision).putBoolean(scope+":dirty",false).commit()){toast("Não foi possível restaurar; dados locais preservados.");return;}raffles=restored;OnlineClient.backupRevision=revision;home();if(force)toast("Dados da nuvem restaurados.");
+            }catch(Exception e){toast("Não foi possível restaurar. Seus dados locais foram preservados.");}
+        },true);
+    }
+    void importLegacy() {
+        if(!"admin".equals(profile.optString("role")))return;
+        new AlertDialog.Builder(this).setTitle("Importar rifas antigas").setMessage("Copiar as rifas da versão anterior deste aparelho para sua conta? Os dados originais serão mantidos.").setNegativeButton("Cancelar",null).setPositiveButton("Importar",(d,w)->{
+            try {JSONArray legacy=new JSONArray(getPreferences(0).getString("rifas","[]"));Set<String> ids=new HashSet<>();for(int i=0;i<raffles.length();i++)ids.add(raffles.getJSONObject(i).optString("id"));for(int i=0;i<legacy.length();i++)if(!legacy.getJSONObject(i).has("id"))legacy.getJSONObject(i).put("id",UUID.randomUUID().toString());if(!getPreferences(0).edit().putString("rifas",legacy.toString()).commit()){toast("Não foi possível preparar a importação.");return;}
+                int added=0;for(int i=0;i<legacy.length();i++){JSONObject r=legacy.getJSONObject(i);if(!ids.contains(r.getString("id"))){r.put("accountId",profile.getString("id"));raffles.put(r);added++;}}if(save()){migratePayments();home();toast(added+" rifa(s) importada(s). Sincronize para salvar online.");accountSync(true);}
+            }catch(Exception e){toast("Falha na importação. Rifas originais preservadas.");}
+        }).show();
+    }
+    void logoutAccount() {
+        if(onlineBusy||accountBusy){toast("Aguarde a sincronização terminar.");return;}
+        if(getPreferences(0).getBoolean(accountKey()+":dirty",false)){toast("Há dados pendentes de sincronização. Sincronize antes de sair.");return;}
+        final String token=OnlineClient.session;new Thread(()->{try{OnlineClient.call(OnlineClient.DEFAULT_BASE,"/api/auth/logout","POST",token,-1,new JSONObject());}catch(Exception e){}}).start();
+        getPreferences(0).edit().remove("accountProfile").remove("accountSession").commit();OnlineClient.session="";OnlineClient.backupRevision=0;profile=null;raffles=new JSONArray();current=null;onlineHandler.removeCallbacks(onlinePoll);onlineHandler.removeCallbacks(backupJob);authScreen(false);
+    }
     String csvCell(String s) { if(s.matches("^[=+@-].*"))s="'"+s; return "\""+s.replace("\"","\"\"")+"\""; }
     @Override protected void onResume(){super.onResume();foreground=true;onlineHandler.removeCallbacks(onlinePoll);onlineHandler.postDelayed(onlinePoll,1000);}
-    @Override protected void onPause(){super.onPause();foreground=false;onlineHandler.removeCallbacks(onlinePoll);}
+    @Override protected void onPause(){super.onPause();foreground=false;onlineHandler.removeCallbacks(onlinePoll);onlineHandler.removeCallbacks(backupJob);}
     interface OnlineWork { JSONObject run() throws Exception; }
     interface OnlineResult { void done(JSONObject value); }
     void onlineTask(OnlineWork work,OnlineResult result,Runnable failed,boolean visible) {
@@ -268,7 +345,7 @@ public class MainActivity extends Activity {
     int pendingCount(JSONObject r){JSONArray rows=r.optJSONArray("webRequests");int count=0;if(rows!=null)for(int i=0;i<rows.length();i++)if("pending".equals(rows.optJSONObject(i).optString("status")))count++;return count;}
     void onlineMenu(JSONObject r) {
         if(!r.has("webId")) {
-            String base=getPreferences(0).getString("onlineBase","");if(base.isEmpty()){onlineSettings();return;}
+            String base=OnlineClient.DEFAULT_BASE;
             if(r.has("winner")){toast("Esta rifa já foi encerrada.");return;}
             try {byte[] bytes=new byte[32];new SecureRandom().nextBytes(bytes);StringBuilder token=new StringBuilder();for(byte b:bytes)token.append(String.format(Locale.US,"%02x",b&255));r.put("webId",UUID.randomUUID().toString()).put("webToken",token.toString()).put("webBase",base);if(!save()){r.remove("webId");r.remove("webToken");r.remove("webBase");return;}}catch(Exception e){toast("Não foi possível criar o link.");return;}
             syncOnline(r,true,()->shareLink(r));return;

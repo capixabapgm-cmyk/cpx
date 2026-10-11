@@ -16,5 +16,8 @@
       "database_id": "18c144e3-51db-4d09-8346-4a578e2d0a2e",
       "migrations_dir": "migrations"
     }
-  ]
+  ],
+  "vars": {
+    "ADMIN_EMAIL": "franciscoandrade.photo@gmail.com"
+  }
 }

@@ -1,4 +1,4 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="br.com.minhasrifas" android:versionCode="7" android:versionName="1.6">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="br.com.minhasrifas" android:versionCode="8" android:versionName="1.7">
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="35" />
     <application android:label="Minhas Rifas" android:theme="@android:style/Theme.Material.Light.NoActionBar" android:icon="@drawable/icon" android:allowBackup="false" android:supportsRtl="true">

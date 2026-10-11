@@ -7,7 +7,8 @@ function render(){
   el('name').textContent=raffle.name;el('description').textContent=raffle.description;
   el('image').hidden=!raffle.image;if(raffle.image)el('image').src=raffle.image;
   el('form').hidden=raffle.closed;
-  el('pix').hidden=raffle.closed;
+  el('pix').hidden=raffle.closed||!raffle.pixKey;
+  el('pix-name').textContent=raffle.pixName||'';el('pix-key').value=raffle.pixKey||'';
   if(raffle.closed){el('message').textContent='Esta rifa já foi encerrada.';return;}
   const sold=new Set(raffle.sold);selected=new Set([...selected].filter(n=>!sold.has(n)));
   const fragment=document.createDocumentFragment();

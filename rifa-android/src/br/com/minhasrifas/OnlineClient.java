@@ -5,6 +5,9 @@ import javax.net.ssl.HttpsURLConnection;
 import org.json.*;
 
 public final class OnlineClient {
+    public static final String DEFAULT_BASE="https://minhas-rifas-pedidos.franciscoandrade-photo.workers.dev";
+    public static volatile String session="";
+    public static volatile int backupRevision=0;
     public static String base(String input) throws Exception {
         URI uri=new URI(input.trim());
         if(!"https".equals(uri.getScheme())||uri.getHost()==null||uri.getUserInfo()!=null||uri.getQuery()!=null||uri.getFragment()!=null||uri.getPort()!=-1||(!uri.getPath().isEmpty()&&!"/".equals(uri.getPath())))throw new Exception("Use apenas o endereço HTTPS da hospedagem, sem caminho ou parâmetros.");
@@ -14,6 +17,7 @@ public final class OnlineClient {
         HttpsURLConnection c=(HttpsURLConnection)new URL(base(base)+path).openConnection();
         c.setInstanceFollowRedirects(false);c.setConnectTimeout(12000);c.setReadTimeout(20000);c.setRequestMethod(method);
         c.setRequestProperty("Accept","application/json");
+        if(!session.isEmpty()&&base(base).equals(DEFAULT_BASE)){c.setRequestProperty("X-Session-Token",session);c.setRequestProperty("X-Backup-Revision",""+backupRevision);}
         if(token!=null)c.setRequestProperty("Authorization","Bearer "+token);
         if(revision>=0)c.setRequestProperty("If-Match",""+revision);
         try {

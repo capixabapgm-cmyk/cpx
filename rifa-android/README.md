@@ -1,5 +1,9 @@
 # Minhas Rifas
 
+## Versão 1.7 — contas separadas
+
+Login por e-mail/senha, cadastro por convite, cache e backup por usuário, Pix por conta e painel administrativo. Instale apenas após ativar as contas no Cloudflare; veja `rifa-online/ATIVAR-CONTAS.md`. O APK mantém pacote e assinatura, versionCode 8. Rifas da versão anterior ficam guardadas no aparelho; o administrador pode importá-las após entrar na conta. Não desinstale nem limpe os dados. Senhas não são guardadas no app; sessões são armazenadas na área privada do aplicativo.
+
 Aplicativo Android nativo, offline, em português. Compatível com Android 8 ou posterior.
 
 - Várias rifas com nome, descrição, imagem e 1 a 10.000 números.

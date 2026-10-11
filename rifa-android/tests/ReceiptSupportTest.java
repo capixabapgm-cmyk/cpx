@@ -13,6 +13,9 @@ public class ReceiptSupportTest {
         check(text.contains("Quantidade: 3") && text.contains("Números: 001, 002, 012"));
         check(!text.contains("Telefone:"));
         check(text.contains("Não comprova pagamento."));
+        String personal=ReceiptSupport.receipt("Rifa","","Ana","",Arrays.asList(1),"hoje","Outro organizador","chave-outro");
+        check(personal.contains("chave-outro")&&!personal.contains("78216834268"));
+        check(!ReceiptSupport.receipt("Rifa","","Ana","",Arrays.asList(1),"hoje","","").contains("78216834268"));
         check(ReceiptSupport.receipt("Rifa","","Ana","11999990000",Arrays.asList(1),"hoje").contains("Telefone: 11999990000"));
         System.out.println("Testes de agrupamento e comprovante passaram.");
     }

@@ -25,5 +25,5 @@ export function requestData(body,raffle){
   return {name:text(body.name,'Nome',120),phone,numbers:selected};
 }
 export function publicRaffle(row){
-  return {id:row.id,name:row.name,description:row.description,total:row.total,sold:JSON.parse(row.sold),closed:!!row.closed,image:row.image,revision:row.revision};
+  return {id:row.id,name:row.name,description:row.description,total:row.total,sold:JSON.parse(row.sold),closed:!!row.closed,image:row.image,revision:row.revision,pixName:row.pix_name??'Francisco Claudemir da Silva Andrade',pixKey:row.pix_key??'78216834268'};
 }
