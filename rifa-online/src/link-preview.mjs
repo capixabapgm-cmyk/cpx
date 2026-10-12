@@ -17,9 +17,10 @@ export async function linkPreview(request,env){
   const id=url.searchParams.get('r');if(!raffleId.test(id??''))return null;
   const row=await env.DB.prepare('SELECT id,name,description,image FROM raffles WHERE id=?').bind(id).first();if(!row)return null;
   // Metadata is in the initial HTML: messaging crawlers do not need JavaScript.
-  const asset=await env.ASSETS.fetch(new Request(new URL('/index.html',url.origin),{method:'GET'}));if(!asset.ok)return asset;
+  const asset=await env.ASSETS.fetch(new Request(new URL('/',url.origin),{method:'GET'}));if(!asset.ok)return asset;
   const title=row.name.slice(0,200);const description=(row.description.trim()||'Escolha seus números e envie seu pedido ao organizador.').replace(/\s+/g,' ').slice(0,220);
-  const canonical=url.origin+'/?r='+id;
+  const preview=url.searchParams.get('preview');
+  const canonical=url.origin+'/?r='+id+(/^[a-zA-Z0-9_-]{1,32}$/.test(preview??'')?'&preview='+encodeURIComponent(preview):'');
   let tags=`<meta property="og:type" content="website"><meta property="og:site_name" content="Minhas Rifas"><meta property="og:locale" content="pt_BR"><meta property="og:title" content="${escape(title)}"><meta property="og:description" content="${escape(description)}"><meta property="og:url" content="${escape(canonical)}"><meta name="description" content="${escape(description)}"><meta name="twitter:title" content="${escape(title)}"><meta name="twitter:description" content="${escape(description)}">`;
   if(row.image){const image=url.origin+'/api/raffles/'+id+'/image?v='+(await imageHash(row.image)).slice(0,16);tags+=`<meta property="og:image" content="${escape(image)}"><meta property="og:image:secure_url" content="${escape(image)}"><meta property="og:image:type" content="image/jpeg"><meta property="og:image:alt" content="${escape(title)}"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="${escape(image)}">`;}
   else tags+='<meta name="twitter:card" content="summary">';

@@ -38,3 +38,9 @@ test('Texto com tokens de substituição permanece literal no HTML',async()=>{
   const env=setup();env.sqlite.prepare('UPDATE raffles SET name=? WHERE id=?').run('$& $` $\' ',id);
   const html=await (await get(env)).text();assert.ok(html.includes('content="$&amp; $` $&#39; "'));assert.equal((html.match(/<head>/g)||[]).length,1);
 });
+
+test('Assets com redirecionamento de index.html não perdem ID nem metadados',async()=>{
+  const env=setup();const serve=env.ASSETS.fetch;env.ASSETS.fetch=request=>new URL(request.url).pathname==='/index.html'?new Response(null,{status:307,headers:{Location:'/'}}):serve(request);
+  const response=await get(env,'/?r='+id+'&preview=foto2');assert.equal(response.status,200);assert.equal(response.headers.get('Location'),null);
+  const html=await response.text();assert.match(html,/property="og:image"/);assert.ok(html.includes('/?r='+id+'&amp;preview=foto2'));
+});
