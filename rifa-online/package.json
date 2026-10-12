@@ -6,7 +6,7 @@
     "node": ">=24"
   },
   "scripts": {
-    "test": "node tests/accounts.test.mjs && node tests/rules.test.mjs",
+    "test": "node tests/accounts.test.mjs && node tests/rules.test.mjs && node tests/link-preview.test.mjs",
     "deploy": "wrangler deploy",
     "db:create": "wrangler d1 create minhas-rifas",
     "db:migrate": "wrangler d1 migrations apply DB --remote"

@@ -75,3 +75,9 @@ Com Node 24, execute `npm test`. Os testes usam SQLite real para validar o SQL d
 ## Temas por conta (APK 1.9)
 
 `GET/PUT /api/account/theme` exige sessão e aceita apenas green/red/pink/yellow/blue/purple. O servidor usa o usuário da sessão, nunca um ID fornecido pelo cliente. A tabela `account_themes` é criada com CREATE TABLE IF NOT EXISTS no primeiro PUT; getters retornam green quando a tabela ainda não existe. Login/me retornam a cor; a página pública consulta a preferência atual do dono. Sem migração manual ou mudança de segredos. Teste de isolamento, login, validação e atualização pública sem republicação incluído em accounts.test.mjs.
+
+## Prévia do link no WhatsApp
+
+O endereço existente `/?r=ID` agora inclui Open Graph no HTML inicial: nome, descrição e imagem JPEG do cabeçalho, com URL HTTPS pública. `/api/raffles/ID/image` entrega somente a imagem já publicada; sem dados de compradores ou credenciais. Imagem é leve, reaproveita o JPEG reduzido enviado pelo APK e usa hash no endereço/cache HTTP. Cabeçalhos de segurança do HTML são preservados. Rifas sem imagem têm prévia textual.
+
+Não exige atualizar APK, executar SQL ou mudar segredos. Publicar pelo GitHub dispara o Cloudflare; o Worker precisa receber `/`, `/index.html` e `/api/*` antes dos Assets (wrangler atualizado). No app, atualize e compartilhe o link para enviar a imagem atual ao servidor. A exibição efetiva e o cache da prévia são controlados pelo WhatsApp; links anteriormente enviados podem continuar com prévia antiga.

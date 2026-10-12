@@ -1,3 +1,4 @@
+import {linkPreview} from './link-preview.mjs';
 import {accountTheme} from './themes.mjs';
 import {ApiError,text,raffleData,requestData,publicRaffle} from './rules.mjs';
 import {accountRoute,sessionUser} from './accounts.mjs';
@@ -17,6 +18,7 @@ export default {
   async fetch(request,env){
     try {
       const url=new URL(request.url);
+      const preview=await linkPreview(request,env);if(preview)return preview;
       if(!url.pathname.startsWith('/api/'))return env.ASSETS.fetch(request);
       if(/^\/api\/(auth|account|admin)\//.test(url.pathname))return json(await accountRoute(request,env,url));
       if(url.pathname==='/api/health')return json({ok:true,service:'minhas-rifas',version:1});
