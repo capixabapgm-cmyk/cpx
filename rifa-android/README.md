@@ -87,3 +87,7 @@ Atualize por cima da versão 1.7 com a mesma assinatura. Não precisa executar S
 A cor principal agora vale para botões, cabeçalho, destaques e números vendidos. Disponíveis mantêm fundo claro; amarelo usa texto escuro. A preferência fica na conta online, independente das rifas e das outras contas, e se aplica à página pública sem republicar as rifas. Login em outro aparelho recupera o tema. Mudanças offline ficam pendentes e são enviadas ao reconectar com o aplicativo aberto; uma alteração feita enquanto há uma requisição em andamento não é apagada pela resposta anterior. A escolha local da versão 1.8 é enviada à conta na primeira atualização.
 
 Não é necessário executar SQL: a tabela `account_themes` é criada automaticamente ao salvar a primeira preferência. Nenhuma tabela existente, rifa, venda, convite ou segredo é alterado. Instale 1.9 por cima da versão atual, com a mesma assinatura.
+
+## Versão 1.9.1 — correção de inicialização
+
+Adiciona ACCESS_NETWORK_STATE, exigida ao agendar jobs que dependem de rede em Android recente. Restrições de permissão/estado/agendamento não propagam pela abertura do aplicativo. Preserva pacote, assinatura, dados e temas da versão 1.9. Teste JVM reproduz as exceções de segurança e indisponibilidade do agendador. Não há emulador ou celular conectado para confirmar a falha relatada; validar abertura no aparelho real após atualizar.

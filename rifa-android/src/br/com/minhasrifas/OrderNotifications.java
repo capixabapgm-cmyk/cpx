@@ -12,6 +12,10 @@ final class OrderNotifications {
     static final String CHANNEL="new_orders";
     static android.content.SharedPreferences prefs(Context c){return c.getSharedPreferences("MainActivity",0);}
     static void schedule(Context c){
+        // Scheduling is optional: Android/vendor restrictions must not prevent app startup.
+        NotificationSchedule.run(()->scheduleRequired(c));
+    }
+    private static void scheduleRequired(Context c){
         if(!prefs(c).getBoolean("orderNotifications",true)||prefs(c).getString("accountSession","").isEmpty())return;
         NotificationManager nm=c.getSystemService(NotificationManager.class);
         nm.createNotificationChannel(new NotificationChannel(CHANNEL,"Novos pedidos de rifa",NotificationManager.IMPORTANCE_DEFAULT));
