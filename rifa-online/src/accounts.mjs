@@ -1,3 +1,4 @@
+import {accountTheme,saveTheme} from './themes.mjs';
 import {ApiError,text} from './rules.mjs';
 export const hash=async s=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s)))].map(b=>b.toString(16).padStart(2,'0')).join('');
 const random=()=>[...crypto.getRandomValues(new Uint8Array(32))].map(b=>b.toString(16).padStart(2,'0')).join('');
@@ -21,7 +22,7 @@ export async function sessionUser(request,env){
   const user=await env.DB.prepare('SELECT users.* FROM sessions JOIN users ON users.id=sessions.user_id WHERE sessions.token_hash=? AND sessions.expires_at>?').bind(await hash(token),now()).first();
   if(!user||user.blocked)throw new ApiError('Sessão expirada ou conta bloqueada. Entre novamente.',401);return user;
 }
-async function loginSession(env,user){const token=random();await env.DB.prepare('INSERT INTO sessions(token_hash,user_id,expires_at) VALUES(?,?,?)').bind(await hash(token),user.id,new Date(Date.now()+30*86400000).toISOString()).run();return {user:safeUser(user),token};}
+async function loginSession(env,user){const token=random();await env.DB.prepare('INSERT INTO sessions(token_hash,user_id,expires_at) VALUES(?,?,?)').bind(await hash(token),user.id,new Date(Date.now()+30*86400000).toISOString()).run();return {user:{...safeUser(user),theme:await accountTheme(env,user.id)},token};}
 export async function accountRoute(request,env,url){
   if(!env.ADMIN_SETUP_KEY||env.ADMIN_SETUP_KEY.length<32)throw new ApiError('Login ainda não ativado. O administrador precisa configurar o serviço.',503);
   const path=url.pathname;
@@ -52,11 +53,16 @@ export async function accountRoute(request,env,url){
     if(!user||digest!==user.password_hash||user.blocked)throw new ApiError('E-mail ou senha inválidos, ou conta bloqueada.',401);return loginSession(env,user);
   }
   const user=await sessionUser(request,env);
-  if(path==='/api/auth/me'&&request.method==='GET')return {user:safeUser(user)};
+  if(path==='/api/auth/me'&&request.method==='GET')return {user:{...safeUser(user),theme:await accountTheme(env,user.id)}};
   if(path==='/api/auth/logout'&&request.method==='POST'){const token=request.headers.get('Authorization')?.replace(/^Bearer /,'');await env.DB.prepare('DELETE FROM sessions WHERE token_hash=?').bind(await hash(token)).run();return {ok:true};}
+  if(path==='/api/account/theme'){
+    if(request.method==='PUT'){const data=await input(request,10000);await saveTheme(env,user.id,data.theme);}
+    else if(request.method!=='GET')throw new ApiError('Método não permitido.',405);
+    return {user:{...safeUser(user),theme:await accountTheme(env,user.id)}};
+  }
   if(path==='/api/account/pix'&&request.method==='PUT'){
     const data=await input(request,10000),name=text(data.name,'Destinatário',120,false),key=text(data.key,'Chave Pix',160,false);
-    if(key&&!name)throw new ApiError('Informe o destinatário do Pix.');await env.DB.prepare('UPDATE users SET pix_name=?,pix_key=? WHERE id=?').bind(name,key,user.id).run();return {user:{...safeUser(user),pixName:name,pixKey:key}};
+    if(key&&!name)throw new ApiError('Informe o destinatário do Pix.');await env.DB.prepare('UPDATE users SET pix_name=?,pix_key=? WHERE id=?').bind(name,key,user.id).run();return {user:{...safeUser(user),pixName:name,pixKey:key,theme:await accountTheme(env,user.id)}};
   }
   if(path==='/api/account/backup'){
     if(request.method==='GET'){const row=await env.DB.prepare('SELECT * FROM backups WHERE user_id=?').bind(user.id).first();return {revision:row?.revision||0,raffles:row?JSON.parse(row.data):[]};}

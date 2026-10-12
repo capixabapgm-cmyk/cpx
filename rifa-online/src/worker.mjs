@@ -1,3 +1,4 @@
+import {accountTheme} from './themes.mjs';
 import {ApiError,text,raffleData,requestData,publicRaffle} from './rules.mjs';
 import {accountRoute,sessionUser} from './accounts.mjs';
 const idPattern=/^[a-f0-9-]{36}$/;
@@ -39,10 +40,10 @@ export default {
           if(!result.meta.changes)throw new ApiError('A rifa mudou online. Sincronize novamente.',409);
           if(row.user_id){const user=await sessionUser(request,env);await env.DB.prepare('UPDATE raffles SET pix_name=?,pix_key=? WHERE id=? AND user_id=?').bind(user.pix_name,user.pix_key,id,user.id).run();}
         }
-        row=await env.DB.prepare('SELECT * FROM raffles WHERE id=?').bind(id).first();return json(publicRaffle(row));
+        row=await env.DB.prepare('SELECT * FROM raffles WHERE id=?').bind(id).first();return json({...publicRaffle(row),theme:await accountTheme(env,row.user_id)});
       }
       if(!row)throw new ApiError('Rifa não encontrada.',404);
-      if(!requests&&request.method==='GET')return json(publicRaffle(row));
+      if(!requests&&request.method==='GET')return json({...publicRaffle(row),theme:await accountTheme(env,row.user_id)});
       if(requests&&!requestId&&request.method==='POST'){
         const input=await body(request);
         if(typeof input.id!=='string'||!idPattern.test(input.id))throw new ApiError('Identificador do pedido inválido.');

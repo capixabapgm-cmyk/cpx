@@ -27,9 +27,12 @@ public class MainActivity extends Activity {
     boolean accountBusy=false;
     long editCounter=0;
     Runnable backupJob=()->accountSync(false);
-    Runnable onlinePoll=new Runnable(){public void run(){if(!foreground||profile==null)return;accountSync(false);for(int i=0;i<raffles.length();i++){JSONObject r=raffles.optJSONObject((onlineCursor+i)%raffles.length());if(r.has("webId")){onlineCursor=(onlineCursor+i+1)%raffles.length();syncOnline(r,false,null);break;}}onlineHandler.postDelayed(this,30000);}};
+    Runnable onlinePoll=new Runnable(){public void run(){if(!foreground||profile==null)return;syncTheme(false);for(int i=0;i<raffles.length();i++){JSONObject r=raffles.optJSONObject((onlineCursor+i)%raffles.length());if(r.has("webId")){onlineCursor=(onlineCursor+i+1)%raffles.length();syncOnline(r,false,null);break;}}onlineHandler.postDelayed(this,30000);}};
+    boolean visualSettingsOpen=false;
+    final String[] themeIds={"green","red","pink","yellow","blue","purple"};
+    final int[] themeColors={0xff185b49,0xffb12626,0xffad2364,0xfff5c328,0xff2058ad,0xff6e30a1};
     int green = Color.rgb(24,91,73);
-    final int soldGreen=Color.rgb(24,91,73), ink = Color.rgb(28,43,38);
+    final int ink = Color.rgb(28,43,38);
     int accentText(){return green==Color.rgb(245,195,40)?ink:Color.WHITE;}
     int dp(int n) { return (int)(n*getResources().getDisplayMetrics().density); }
     @Override public void onCreate(Bundle state) {
@@ -40,6 +43,7 @@ public class MainActivity extends Activity {
         try {String saved=getPreferences(0).getString("accountProfile","");if(!saved.isEmpty()){profile=new JSONObject(saved);OnlineClient.session=getPreferences(0).getString("accountSession","");raffles=new JSONArray(getPreferences(0).getString(accountKey(),"[]"));OnlineClient.backupRevision=getPreferences(0).getInt(accountKey()+":revision",0);}}
         catch (Exception e) { new AlertDialog.Builder(this).setMessage("Não foi possível ler os dados salvos.").setPositiveButton("OK",null).show(); }
         migratePayments();
+        if(profile!=null){if(!profile.has("theme")){for(int i=0;i<themeColors.length;i++)if(green==themeColors[i]){try{profile.put("theme",themeIds[i]);getPreferences(0).edit().putString("accountProfile",profile.toString()).putBoolean(accountKey()+":themeDirty",true).commit();}catch(Exception ignored){}break;}}applyTheme();}
         OrderNotifications.schedule(this);
         if(profile==null)authScreen(false);else {home();askNotificationPermission();openOrderIntent(getIntent());}
     }
@@ -82,7 +86,7 @@ public class MainActivity extends Activity {
     GradientDrawable bg(int color) { GradientDrawable d=new GradientDrawable(); d.setColor(color); d.setCornerRadius(dp(14)); return d; }
     LinearLayout column() { LinearLayout l=new LinearLayout(this); l.setOrientation(1); return l; }
     void screen(String title, boolean back) {
-        viewingRequests=false;
+        viewingRequests=false;visualSettingsOpen=false;
         LinearLayout root=column(); root.setBackgroundColor(Color.rgb(245,248,246));
         root.setOnApplyWindowInsetsListener((v,insets)-> { v.setPadding(0,insets.getSystemWindowInsetTop(),0,insets.getSystemWindowInsetBottom()); return insets; });
         TextView header=label((back?"‹  ":"")+title,20); header.setTextColor(accentText()); header.setPadding(dp(12),dp(10),dp(12),dp(10)); header.setBackgroundColor(green);
@@ -142,12 +146,12 @@ public class MainActivity extends Activity {
         button(r.has("webId")?"Link e pedidos online ("+pendingCount(r)+")":"Gerar link para pedidos",body,()->onlineMenu(r));
         button("Pix / copiar chave",body,()->new AlertDialog.Builder(this).setTitle("Pagamento por Pix").setMessage(PixInfo.instructions(profile.optString("pixName"),profile.optString("pixKey"))).setNegativeButton("Fechar",null).setPositiveButton("Copiar chave",(d,w)->{if(profile.optString("pixKey").isEmpty()){toast("Configure seu Pix em Minha conta.");return;}android.content.ClipboardManager clipboard=(android.content.ClipboardManager)getSystemService(CLIPBOARD_SERVICE);clipboard.setPrimaryClip(ClipData.newPlainText("Chave Pix",profile.optString("pixKey")));toast("Chave Pix copiada.");}).show());
         if(!r.has("winner") && !ready) button("+ Comprador / vários números",body,()->bulkSale(r));
-        body.addView(label("Números • Verde = vendido",14));
+        body.addView(label("Números • Cor do tema = vendido",14));
         GridLayout grid=new GridLayout(this); body.addView(grid,new LinearLayout.LayoutParams(-1,-2));
         int available=getResources().getDisplayMetrics().widthPixels-dp(20);
         int columns=Math.max(4,Math.min(8,available/dp(46))); grid.setColumnCount(columns);
         int width=available/columns;
-        for(int n=1;n<=r.optInt("total");n++) { final int num=n; boolean taken=r.optJSONObject("sales").has(""+n); TextView t=label(number(n),12); t.setPadding(0,0,0,0); t.setGravity(Gravity.CENTER); t.setTextColor(taken?Color.WHITE:ink); t.setBackground(bg(taken?soldGreen:Color.WHITE)); t.setContentDescription("Número "+n+(taken?", vendido":", disponível")); GridLayout.LayoutParams p=new GridLayout.LayoutParams(); p.width=width-dp(4); p.height=dp(38); p.setMargins(dp(2),dp(2),dp(2),dp(2)); grid.addView(t,p); t.setOnClickListener(v->sale(r,num)); }
+        for(int n=1;n<=r.optInt("total");n++) { final int num=n; boolean taken=r.optJSONObject("sales").has(""+n); TextView t=label(number(n),12); t.setPadding(0,0,0,0); t.setGravity(Gravity.CENTER); t.setTextColor(taken?accentText():ink); t.setBackground(bg(taken?green:Color.WHITE)); t.setContentDescription("Número "+n+(taken?", vendido":", disponível")); GridLayout.LayoutParams p=new GridLayout.LayoutParams(); p.width=width-dp(4); p.height=dp(38); p.setMargins(dp(2),dp(2),dp(2),dp(2)); grid.addView(t,p); t.setOnClickListener(v->sale(r,num)); }
     }
     void sale(JSONObject r,int n) {
         JSONObject sales=r.optJSONObject("sales"), old=sales.optJSONObject(""+n);
@@ -189,7 +193,7 @@ public class MainActivity extends Activity {
             String key=entry.getKey(); ArrayList<Integer> nums=entry.getValue(); JSONObject buyer=r.optJSONObject("sales").optJSONObject(""+nums.get(0));
             LinearLayout row=column(); row.setPadding(0,dp(6),0,dp(6)); body.addView(row);
             row.addView(label(buyer.optString("name")+" — "+ReceiptSupport.numbers(nums),15));
-            TextView status=label(paymentStatus(r,nums)+(r.has("winner")?"":" • tocar para alterar"),12);status.setTextColor(paymentStatus(r,nums).equals("Pago")?soldGreen:Color.rgb(166,75,20));row.addView(status);status.setOnClickListener(v->buyerPayment(r,key));
+            TextView status=label(paymentStatus(r,nums)+(r.has("winner")?"":" • tocar para alterar"),12);status.setTextColor(paymentStatus(r,nums).equals("Pago")?(green==themeColors[3]?ink:green):Color.rgb(166,75,20));row.addView(status);status.setOnClickListener(v->buyerPayment(r,key));
             if(!buyer.optString("phone").isEmpty()) {
                 TextView phone=label(buyer.optString("phone"),13); phone.setVisibility(phones.isChecked()?View.VISIBLE:View.GONE);
                 phoneRows.add(phone); row.addView(phone);
@@ -272,7 +276,7 @@ public class MainActivity extends Activity {
             if(accountBusy||onlineBusy){toast("Aguarde a conexão atual.");return;}
             if(password.getText().length()<12){password.setError("Use pelo menos 12 caracteres");return;}
             try {JSONObject data=new JSONObject().put("email",email.getText().toString().trim()).put("password",password.getText().toString());if(register)data.put("name",name.getText().toString().trim()).put("invite",invite.getText().toString().trim());
-                accountTask(()->OnlineClient.call(OnlineClient.DEFAULT_BASE,register?"/api/auth/register":"/api/auth/login","POST",null,-1,data),response->{try{profile=response.getJSONObject("user");OnlineClient.session=response.getString("token");getPreferences(0).edit().putString("accountProfile",profile.toString()).putString("accountSession",OnlineClient.session).commit();raffles=new JSONArray(getPreferences(0).getString(accountKey(),"[]"));OnlineClient.backupRevision=getPreferences(0).getInt(accountKey()+":revision",0);password.setText("");home();OrderNotifications.schedule(this);askNotificationPermission();accountSync(true);}catch(Exception e){toast("Não foi possível abrir a conta.");}},true);
+                accountTask(()->OnlineClient.call(OnlineClient.DEFAULT_BASE,register?"/api/auth/register":"/api/auth/login","POST",null,-1,data),response->{try{profile=response.getJSONObject("user");OnlineClient.session=response.getString("token");getPreferences(0).edit().putString("accountProfile",profile.toString()).putString("accountSession",OnlineClient.session).commit();raffles=new JSONArray(getPreferences(0).getString(accountKey(),"[]"));OnlineClient.backupRevision=getPreferences(0).getInt(accountKey()+":revision",0);password.setText("");applyTheme();home();OrderNotifications.schedule(this);askNotificationPermission();accountSync(true);}catch(Exception e){toast("Não foi possível abrir a conta.");}},true);
             }catch(Exception e){toast("Confira os dados.");}
         });
         button(register?"Já tenho conta":"Criar conta por convite",body,()->authScreen(!register));
@@ -326,24 +330,39 @@ public class MainActivity extends Activity {
         if(onlineBusy||accountBusy){toast("Aguarde a sincronização terminar.");return;}
         if(getPreferences(0).getBoolean(accountKey()+":dirty",false)){toast("Há dados pendentes de sincronização. Sincronize antes de sair.");return;}
         final String token=OnlineClient.session;new Thread(()->{try{OnlineClient.call(OnlineClient.DEFAULT_BASE,"/api/auth/logout","POST",token,-1,new JSONObject());}catch(Exception e){}}).start();
-        getPreferences(0).edit().remove("accountProfile").remove("accountSession").commit();OrderNotifications.clear(this);OnlineClient.session="";OnlineClient.backupRevision=0;profile=null;raffles=new JSONArray();current=null;onlineHandler.removeCallbacks(onlinePoll);onlineHandler.removeCallbacks(backupJob);authScreen(false);
+        getPreferences(0).edit().remove("accountProfile").remove("accountSession").commit();OrderNotifications.clear(this);OnlineClient.session="";OnlineClient.backupRevision=0;profile=null;green=themeColors[0];getWindow().setStatusBarColor(green);raffles=new JSONArray();current=null;onlineHandler.removeCallbacks(onlinePoll);onlineHandler.removeCallbacks(backupJob);authScreen(false);
     }
     String csvCell(String s) { if(s.matches("^[=+@-].*"))s="'"+s; return "\""+s.replace("\"","\"\"")+"\""; }
+    void applyTheme(){
+        green=themeColors[0];if(profile!=null)for(int i=0;i<themeIds.length;i++)if(themeIds[i].equals(profile.optString("theme"))){green=themeColors[i];break;}
+        getWindow().setStatusBarColor(green);int flags=getWindow().getDecorView().getSystemUiVisibility();getWindow().getDecorView().setSystemUiVisibility(green==themeColors[3]?flags|View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR:flags&~View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
+    }
+    void syncTheme(boolean visible){
+        if(profile==null||accountBusy||OnlineClient.session.isEmpty())return;
+        final String scope=accountKey();final String chosen=profile.optString("theme","green");boolean dirty=getPreferences(0).getBoolean(scope+":themeDirty",false);
+        try{JSONObject data=dirty?new JSONObject().put("theme",chosen):null;
+            accountTask(()->OnlineClient.call(OnlineClient.DEFAULT_BASE,"/api/account/theme",dirty?"PUT":"GET",OnlineClient.session,-1,data),response->{
+                if(profile==null||!scope.equals(accountKey()))return;
+                if(!chosen.equals(profile.optString("theme","green")))return;
+                try{int old=green;profile=response.getJSONObject("user");getPreferences(0).edit().putString("accountProfile",profile.toString()).putBoolean(scope+":themeDirty",false).commit();applyTheme();if(old!=green){if(visualSettingsOpen)visualSettings();else if(current!=null){if(viewingRequests)requestsScreen(current);else detail(current);}else home();}if(visible)toast("Cor da sua conta salva online.");accountSync(false);}catch(Exception e){if(visible)toast("Cor local preservada; tente sincronizar novamente.");}
+            },visible);
+        }catch(Exception e){if(visible)toast("Cor local preservada; sincronize ao reconectar.");}
+    }
     void askNotificationPermission() {
         if(!getPreferences(0).getBoolean("orderNotifications",true))return;
         if(Build.VERSION.SDK_INT>=33&&checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)!=android.content.pm.PackageManager.PERMISSION_GRANTED)
             requestPermissions(new String[]{android.Manifest.permission.POST_NOTIFICATIONS},80);
     }
     void visualSettings() {
-        current=null;screen("Configurações",true);
-        body.addView(label("Cor dos botões e destaques",19));
+        current=null;screen("Configurações",true);visualSettingsOpen=true;
+        body.addView(label("Cor dos botões, destaques e números vendidos",19));
         String[] names={"Verde","Vermelho","Rosa","Amarelo","Azul","Roxo"};
-        int[] colors={soldGreen,Color.rgb(177,38,38),Color.rgb(173,35,100),Color.rgb(245,195,40),Color.rgb(32,88,173),Color.rgb(110,48,161)};
-        for(int i=0;i<names.length;i++){final int color=colors[i];Button b=button(names[i]+(green==color?" ✓":""),body,()->{green=color;getPreferences(0).edit().putInt("accentColor",color).apply();getWindow().setStatusBarColor(color);visualSettings();});b.setBackground(bg(color));b.setTextColor(color==colors[3]?ink:Color.WHITE);}
-        body.addView(label("Números vendidos permanecem verdes. A cor escolhida fica salva neste aparelho.",13));
+        int[] colors=themeColors;
+        for(int i=0;i<names.length;i++){final int color=colors[i];final String theme=themeIds[i];Button b=button(names[i]+(green==color?" ✓":""),body,()->{try{profile.put("theme",theme);getPreferences(0).edit().putString("accountProfile",profile.toString()).putBoolean(accountKey()+":themeDirty",true).commit();applyTheme();visualSettings();syncTheme(true);}catch(Exception e){toast("Não foi possível salvar a cor.");}});b.setBackground(bg(color));b.setTextColor(color==colors[3]?ink:Color.WHITE);}
+        body.addView(label("A cor vale para toda a sua conta, inclusive os números vendidos e a página pública. Alterações sem internet serão enviadas ao reconectar.",13));
         Switch enabled=new Switch(this);enabled.setText("Avisar quando chegar novo pedido");enabled.setChecked(getPreferences(0).getBoolean("orderNotifications",true));body.addView(enabled);
         enabled.setOnCheckedChangeListener((b,on)->{getPreferences(0).edit().putBoolean("orderNotifications",on).commit();if(on){OrderNotifications.schedule(this);askNotificationPermission();}else OrderNotifications.clear(this);});
-        body.addView(label("Com o app aberto, a consulta ocorre a cada 30 segundos por rifa. Em segundo plano, o Android agenda consultas a partir de 15 minutos e pode atrasá-las para economizar bateria. É preciso internet; forçar parada impede os avisos até abrir o app.",13));
+        body.addView(label("Com o app aberto, a consulta ocorre a cada 30 segundos, alternando as rifas. Em segundo plano, o Android agenda consultas a partir de 15 minutos e pode atrasá-las para economizar bateria. É preciso internet; forçar parada impede os avisos até abrir o app.",13));
         button("Permissão de notificações no Android",body,()->{askNotificationPermission();Intent intent=new Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(android.provider.Settings.EXTRA_APP_PACKAGE,getPackageName());startActivity(intent);});
     }
     void openOrderIntent(Intent intent){if(profile==null||intent==null)return;String id=intent.getStringExtra("orderRaffle");if(id==null)return;intent.removeExtra("orderRaffle");for(int i=0;i<raffles.length();i++){JSONObject r=raffles.optJSONObject(i);if(id.equals(r.optString("webId"))){requestsScreen(r);syncOnline(r,false,()->requestsScreen(r));return;}}}

@@ -81,3 +81,9 @@ Avisos usam IDs de pedidos com registro persistente por usuário e rifa, evitand
 JobScheduler consulta em segundo plano com internet, período mínimo de 15 minutos, persistência após reiniciar e sem serviço contínuo. Economia de bateria/Doze pode atrasar a execução; forçar parada impede execução até reabrir. Não é push instantâneo. O job apenas consulta e gera avisos: nunca muda vendas, importa compradores ou grava backup. Usa a sessão e conta atuais e cancela avisos e agendamento ao sair. Pedidos já presentes no cache antes da atualização não geram avisos retroativos.
 
 Atualize por cima da versão 1.7 com a mesma assinatura. Não precisa executar SQL nem mudar segredos no Cloudflare. A publicação atualiza apenas o link de APK dos convites. Compilação, assinatura e testes de detecção de pedidos foram verificados localmente; permissão, toque e execução em segundo plano precisam ser conferidos no aparelho real.
+
+## Versão 1.9 — tema por conta
+
+A cor principal agora vale para botões, cabeçalho, destaques e números vendidos. Disponíveis mantêm fundo claro; amarelo usa texto escuro. A preferência fica na conta online, independente das rifas e das outras contas, e se aplica à página pública sem republicar as rifas. Login em outro aparelho recupera o tema. Mudanças offline ficam pendentes e são enviadas ao reconectar com o aplicativo aberto; uma alteração feita enquanto há uma requisição em andamento não é apagada pela resposta anterior. A escolha local da versão 1.8 é enviada à conta na primeira atualização.
+
+Não é necessário executar SQL: a tabela `account_themes` é criada automaticamente ao salvar a primeira preferência. Nenhuma tabela existente, rifa, venda, convite ou segredo é alterado. Instale 1.9 por cima da versão atual, com a mesma assinatura.

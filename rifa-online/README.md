@@ -71,3 +71,7 @@ Para o teste, o serviço limita a 200 novos pedidos por hora e 1.000 pedidos pen
 ## Validação
 
 Com Node 24, execute `npm test`. Os testes usam SQLite real para validar o SQL da API: privacidade, autenticação, envio pendente, reenvio sem duplicação, aprovação, conflito entre pedidos, conflito com venda manual, rejeição, encerramento e revisão de sincronização. A tela no navegador, o APK num aparelho Android e a infraestrutura Cloudflare precisam ser conferidos após ativar a conta.
+
+## Temas por conta (APK 1.9)
+
+`GET/PUT /api/account/theme` exige sessão e aceita apenas green/red/pink/yellow/blue/purple. O servidor usa o usuário da sessão, nunca um ID fornecido pelo cliente. A tabela `account_themes` é criada com CREATE TABLE IF NOT EXISTS no primeiro PUT; getters retornam green quando a tabela ainda não existe. Login/me retornam a cor; a página pública consulta a preferência atual do dono. Sem migração manual ou mudança de segredos. Teste de isolamento, login, validação e atualização pública sem republicação incluído em accounts.test.mjs.

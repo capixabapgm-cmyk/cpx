@@ -4,6 +4,8 @@ let raffle,selected=new Set(),sending=false,pendingId=null;
 const fmt=n=>String(n).padStart(3,'0');
 function summary(){el('selection').textContent=selected.size?`${selected.size} número(s): ${[...selected].sort((a,b)=>a-b).map(fmt).join(', ')}`:'Selecione os números acima.';}
 function render(){
+  const themes=['green','red','pink','yellow','blue','purple'];
+  document.body.className='theme-'+(themes.includes(raffle.theme)?raffle.theme:'green');
   el('name').textContent=raffle.name;el('description').textContent=raffle.description;
   el('image').hidden=!raffle.image;if(raffle.image)el('image').src=raffle.image;
   el('form').hidden=raffle.closed;
