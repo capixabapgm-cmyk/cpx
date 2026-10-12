@@ -28,16 +28,20 @@ public class MainActivity extends Activity {
     long editCounter=0;
     Runnable backupJob=()->accountSync(false);
     Runnable onlinePoll=new Runnable(){public void run(){if(!foreground||profile==null)return;accountSync(false);for(int i=0;i<raffles.length();i++){JSONObject r=raffles.optJSONObject((onlineCursor+i)%raffles.length());if(r.has("webId")){onlineCursor=(onlineCursor+i+1)%raffles.length();syncOnline(r,false,null);break;}}onlineHandler.postDelayed(this,30000);}};
-    final int green = Color.rgb(24,91,73), ink = Color.rgb(28,43,38);
+    int green = Color.rgb(24,91,73);
+    final int soldGreen=Color.rgb(24,91,73), ink = Color.rgb(28,43,38);
+    int accentText(){return green==Color.rgb(245,195,40)?ink:Color.WHITE;}
     int dp(int n) { return (int)(n*getResources().getDisplayMetrics().density); }
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
+        green=getPreferences(0).getInt("accentColor",green);
         getWindow().setStatusBarColor(green);
         getWindow().setNavigationBarColor(Color.WHITE);
         try {String saved=getPreferences(0).getString("accountProfile","");if(!saved.isEmpty()){profile=new JSONObject(saved);OnlineClient.session=getPreferences(0).getString("accountSession","");raffles=new JSONArray(getPreferences(0).getString(accountKey(),"[]"));OnlineClient.backupRevision=getPreferences(0).getInt(accountKey()+":revision",0);}}
         catch (Exception e) { new AlertDialog.Builder(this).setMessage("Não foi possível ler os dados salvos.").setPositiveButton("OK",null).show(); }
         migratePayments();
-        if(profile==null)authScreen(false);else home();
+        OrderNotifications.schedule(this);
+        if(profile==null)authScreen(false);else {home();askNotificationPermission();openOrderIntent(getIntent());}
     }
     boolean save() {
         if(profile==null)return false;
@@ -81,12 +85,12 @@ public class MainActivity extends Activity {
         viewingRequests=false;
         LinearLayout root=column(); root.setBackgroundColor(Color.rgb(245,248,246));
         root.setOnApplyWindowInsetsListener((v,insets)-> { v.setPadding(0,insets.getSystemWindowInsetTop(),0,insets.getSystemWindowInsetBottom()); return insets; });
-        TextView header=label((back?"‹  ":"")+title,20); header.setTextColor(Color.WHITE); header.setPadding(dp(12),dp(10),dp(12),dp(10)); header.setBackgroundColor(green);
+        TextView header=label((back?"‹  ":"")+title,20); header.setTextColor(accentText()); header.setPadding(dp(12),dp(10),dp(12),dp(10)); header.setBackgroundColor(green);
         if(back) header.setOnClickListener(v->home()); root.addView(header);
         ScrollView scroll=new ScrollView(this); scroll.setFillViewport(true); body=column(); body.setPadding(dp(10),dp(8),dp(10),dp(16)); scroll.addView(body); root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1)); setContentView(root);
     }
     TextView label(String text,int size) { TextView t=new TextView(this); t.setText(text); t.setTextSize(size); t.setTextColor(ink); t.setPadding(0,dp(4),0,dp(4)); return t; }
-    Button button(String title, LinearLayout parent, Runnable action) { Button b=new Button(this); b.setText(title); b.setTextSize(14); b.setAllCaps(false); b.setMinHeight(0); b.setMinimumHeight(0); b.setPadding(dp(6),0,dp(6),0); b.setTextColor(Color.WHITE); b.setBackground(bg(green)); LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,dp(42)); p.setMargins(0,dp(4),0,dp(4)); parent.addView(b,p); b.setOnClickListener(v->action.run()); return b; }
+    Button button(String title, LinearLayout parent, Runnable action) { Button b=new Button(this); b.setText(title); b.setTextSize(14); b.setAllCaps(false); b.setMinHeight(0); b.setMinimumHeight(0); b.setPadding(dp(6),0,dp(6),0); b.setTextColor(accentText()); b.setBackground(bg(green)); LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,dp(42)); p.setMargins(0,dp(4),0,dp(4)); parent.addView(b,p); b.setOnClickListener(v->action.run()); return b; }
     EditText field(LinearLayout l,String hint,String value,int type) { EditText e=new EditText(this); e.setHint(hint); e.setText(value); e.setInputType(type); l.addView(e,new LinearLayout.LayoutParams(-1,-2)); return e; }
     int sold(JSONObject r) { return r.optJSONObject("sales").length(); }
     String number(int n) { return String.format(Locale.US,"%03d",n); }
@@ -98,6 +102,7 @@ public class MainActivity extends Activity {
         body.addView(label("Organize suas rifas, número por número.",16));
         button("+ Adicionar nova rifa",body,()->edit(null));
         button("Configurar pedidos pela internet",body,()->onlineSettings());
+        button("Configurações / cores / notificações",body,()->visualSettings());
         if(raffles.length()==0) body.addView(label("Sua primeira rifa começa aqui. Adicione um nome, uma imagem e a quantidade de números.",18));
         for(int i=0;i<raffles.length();i++) { final JSONObject r=raffles.optJSONObject(i); LinearLayout card=column(); card.setPadding(dp(16),dp(12),dp(16),dp(12)); card.setBackground(bg(Color.WHITE)); LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2); p.setMargins(0,dp(12),0,0); body.addView(card,p); card.addView(label(r.optString("name"),21)); card.addView(label(sold(r)+" de "+r.optInt("total")+" vendidos • "+(r.has("winner")?"Sorteada":"Em andamento"),14)); button("Abrir rifa",card,()->detail(r)); }
     }
@@ -142,7 +147,7 @@ public class MainActivity extends Activity {
         int available=getResources().getDisplayMetrics().widthPixels-dp(20);
         int columns=Math.max(4,Math.min(8,available/dp(46))); grid.setColumnCount(columns);
         int width=available/columns;
-        for(int n=1;n<=r.optInt("total");n++) { final int num=n; boolean taken=r.optJSONObject("sales").has(""+n); TextView t=label(number(n),12); t.setPadding(0,0,0,0); t.setGravity(Gravity.CENTER); t.setTextColor(taken?Color.WHITE:green); t.setBackground(bg(taken?green:Color.WHITE)); t.setContentDescription("Número "+n+(taken?", vendido":", disponível")); GridLayout.LayoutParams p=new GridLayout.LayoutParams(); p.width=width-dp(4); p.height=dp(38); p.setMargins(dp(2),dp(2),dp(2),dp(2)); grid.addView(t,p); t.setOnClickListener(v->sale(r,num)); }
+        for(int n=1;n<=r.optInt("total");n++) { final int num=n; boolean taken=r.optJSONObject("sales").has(""+n); TextView t=label(number(n),12); t.setPadding(0,0,0,0); t.setGravity(Gravity.CENTER); t.setTextColor(taken?Color.WHITE:ink); t.setBackground(bg(taken?soldGreen:Color.WHITE)); t.setContentDescription("Número "+n+(taken?", vendido":", disponível")); GridLayout.LayoutParams p=new GridLayout.LayoutParams(); p.width=width-dp(4); p.height=dp(38); p.setMargins(dp(2),dp(2),dp(2),dp(2)); grid.addView(t,p); t.setOnClickListener(v->sale(r,num)); }
     }
     void sale(JSONObject r,int n) {
         JSONObject sales=r.optJSONObject("sales"), old=sales.optJSONObject(""+n);
@@ -184,7 +189,7 @@ public class MainActivity extends Activity {
             String key=entry.getKey(); ArrayList<Integer> nums=entry.getValue(); JSONObject buyer=r.optJSONObject("sales").optJSONObject(""+nums.get(0));
             LinearLayout row=column(); row.setPadding(0,dp(6),0,dp(6)); body.addView(row);
             row.addView(label(buyer.optString("name")+" — "+ReceiptSupport.numbers(nums),15));
-            TextView status=label(paymentStatus(r,nums)+(r.has("winner")?"":" • tocar para alterar"),12);status.setTextColor(paymentStatus(r,nums).equals("Pago")?green:Color.rgb(166,75,20));row.addView(status);status.setOnClickListener(v->buyerPayment(r,key));
+            TextView status=label(paymentStatus(r,nums)+(r.has("winner")?"":" • tocar para alterar"),12);status.setTextColor(paymentStatus(r,nums).equals("Pago")?soldGreen:Color.rgb(166,75,20));row.addView(status);status.setOnClickListener(v->buyerPayment(r,key));
             if(!buyer.optString("phone").isEmpty()) {
                 TextView phone=label(buyer.optString("phone"),13); phone.setVisibility(phones.isChecked()?View.VISIBLE:View.GONE);
                 phoneRows.add(phone); row.addView(phone);
@@ -267,7 +272,7 @@ public class MainActivity extends Activity {
             if(accountBusy||onlineBusy){toast("Aguarde a conexão atual.");return;}
             if(password.getText().length()<12){password.setError("Use pelo menos 12 caracteres");return;}
             try {JSONObject data=new JSONObject().put("email",email.getText().toString().trim()).put("password",password.getText().toString());if(register)data.put("name",name.getText().toString().trim()).put("invite",invite.getText().toString().trim());
-                accountTask(()->OnlineClient.call(OnlineClient.DEFAULT_BASE,register?"/api/auth/register":"/api/auth/login","POST",null,-1,data),response->{try{profile=response.getJSONObject("user");OnlineClient.session=response.getString("token");getPreferences(0).edit().putString("accountProfile",profile.toString()).putString("accountSession",OnlineClient.session).commit();raffles=new JSONArray(getPreferences(0).getString(accountKey(),"[]"));OnlineClient.backupRevision=getPreferences(0).getInt(accountKey()+":revision",0);password.setText("");home();accountSync(true);}catch(Exception e){toast("Não foi possível abrir a conta.");}},true);
+                accountTask(()->OnlineClient.call(OnlineClient.DEFAULT_BASE,register?"/api/auth/register":"/api/auth/login","POST",null,-1,data),response->{try{profile=response.getJSONObject("user");OnlineClient.session=response.getString("token");getPreferences(0).edit().putString("accountProfile",profile.toString()).putString("accountSession",OnlineClient.session).commit();raffles=new JSONArray(getPreferences(0).getString(accountKey(),"[]"));OnlineClient.backupRevision=getPreferences(0).getInt(accountKey()+":revision",0);password.setText("");home();OrderNotifications.schedule(this);askNotificationPermission();accountSync(true);}catch(Exception e){toast("Não foi possível abrir a conta.");}},true);
             }catch(Exception e){toast("Confira os dados.");}
         });
         button(register?"Já tenho conta":"Criar conta por convite",body,()->authScreen(!register));
@@ -321,9 +326,28 @@ public class MainActivity extends Activity {
         if(onlineBusy||accountBusy){toast("Aguarde a sincronização terminar.");return;}
         if(getPreferences(0).getBoolean(accountKey()+":dirty",false)){toast("Há dados pendentes de sincronização. Sincronize antes de sair.");return;}
         final String token=OnlineClient.session;new Thread(()->{try{OnlineClient.call(OnlineClient.DEFAULT_BASE,"/api/auth/logout","POST",token,-1,new JSONObject());}catch(Exception e){}}).start();
-        getPreferences(0).edit().remove("accountProfile").remove("accountSession").commit();OnlineClient.session="";OnlineClient.backupRevision=0;profile=null;raffles=new JSONArray();current=null;onlineHandler.removeCallbacks(onlinePoll);onlineHandler.removeCallbacks(backupJob);authScreen(false);
+        getPreferences(0).edit().remove("accountProfile").remove("accountSession").commit();OrderNotifications.clear(this);OnlineClient.session="";OnlineClient.backupRevision=0;profile=null;raffles=new JSONArray();current=null;onlineHandler.removeCallbacks(onlinePoll);onlineHandler.removeCallbacks(backupJob);authScreen(false);
     }
     String csvCell(String s) { if(s.matches("^[=+@-].*"))s="'"+s; return "\""+s.replace("\"","\"\"")+"\""; }
+    void askNotificationPermission() {
+        if(!getPreferences(0).getBoolean("orderNotifications",true))return;
+        if(Build.VERSION.SDK_INT>=33&&checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)!=android.content.pm.PackageManager.PERMISSION_GRANTED)
+            requestPermissions(new String[]{android.Manifest.permission.POST_NOTIFICATIONS},80);
+    }
+    void visualSettings() {
+        current=null;screen("Configurações",true);
+        body.addView(label("Cor dos botões e destaques",19));
+        String[] names={"Verde","Vermelho","Rosa","Amarelo","Azul","Roxo"};
+        int[] colors={soldGreen,Color.rgb(177,38,38),Color.rgb(173,35,100),Color.rgb(245,195,40),Color.rgb(32,88,173),Color.rgb(110,48,161)};
+        for(int i=0;i<names.length;i++){final int color=colors[i];Button b=button(names[i]+(green==color?" ✓":""),body,()->{green=color;getPreferences(0).edit().putInt("accentColor",color).apply();getWindow().setStatusBarColor(color);visualSettings();});b.setBackground(bg(color));b.setTextColor(color==colors[3]?ink:Color.WHITE);}
+        body.addView(label("Números vendidos permanecem verdes. A cor escolhida fica salva neste aparelho.",13));
+        Switch enabled=new Switch(this);enabled.setText("Avisar quando chegar novo pedido");enabled.setChecked(getPreferences(0).getBoolean("orderNotifications",true));body.addView(enabled);
+        enabled.setOnCheckedChangeListener((b,on)->{getPreferences(0).edit().putBoolean("orderNotifications",on).commit();if(on){OrderNotifications.schedule(this);askNotificationPermission();}else OrderNotifications.clear(this);});
+        body.addView(label("Com o app aberto, a consulta ocorre a cada 30 segundos por rifa. Em segundo plano, o Android agenda consultas a partir de 15 minutos e pode atrasá-las para economizar bateria. É preciso internet; forçar parada impede os avisos até abrir o app.",13));
+        button("Permissão de notificações no Android",body,()->{askNotificationPermission();Intent intent=new Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(android.provider.Settings.EXTRA_APP_PACKAGE,getPackageName());startActivity(intent);});
+    }
+    void openOrderIntent(Intent intent){if(profile==null||intent==null)return;String id=intent.getStringExtra("orderRaffle");if(id==null)return;intent.removeExtra("orderRaffle");for(int i=0;i<raffles.length();i++){JSONObject r=raffles.optJSONObject(i);if(id.equals(r.optString("webId"))){requestsScreen(r);syncOnline(r,false,()->requestsScreen(r));return;}}}
+    @Override protected void onNewIntent(Intent intent){super.onNewIntent(intent);setIntent(intent);openOrderIntent(intent);}
     @Override protected void onResume(){super.onResume();foreground=true;onlineHandler.removeCallbacks(onlinePoll);onlineHandler.postDelayed(onlinePoll,1000);}
     @Override protected void onPause(){super.onPause();foreground=false;onlineHandler.removeCallbacks(onlinePoll);onlineHandler.removeCallbacks(backupJob);}
     interface OnlineWork { JSONObject run() throws Exception; }
@@ -356,7 +380,7 @@ public class MainActivity extends Activity {
     }
     void shareLink(JSONObject r) {
         String link=r.optString("webBase")+"/?r="+r.optString("webId");
-        new AlertDialog.Builder(this).setTitle("Link da rifa").setMessage(link+"\n\nPedidos não confirmam venda ou pagamento. O aplicativo recebe pedidos enquanto está aberto e conectado.").setNegativeButton("Fechar",null).setNeutralButton("Abrir",(d,w)->startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse(link)))).setPositiveButton("Compartilhar",(d,w)->{Intent share=new Intent(Intent.ACTION_SEND);share.setType("text/plain");share.putExtra(Intent.EXTRA_TEXT,r.optString("name")+"\nEscolha seus números e envie o pedido:\n"+link);startActivity(Intent.createChooser(share,"Enviar link"));}).show();
+        new AlertDialog.Builder(this).setTitle("Link da rifa").setMessage(link+"\n\nPedidos não confirmam venda ou pagamento. Notificações em segundo plano podem demorar conforme as restrições do Android.").setNegativeButton("Fechar",null).setNeutralButton("Abrir",(d,w)->startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse(link)))).setPositiveButton("Compartilhar",(d,w)->{Intent share=new Intent(Intent.ACTION_SEND);share.setType("text/plain");share.putExtra(Intent.EXTRA_TEXT,r.optString("name")+"\nEscolha seus números e envie o pedido:\n"+link);startActivity(Intent.createChooser(share,"Enviar link"));}).show();
     }
     JSONObject publicSnapshot(JSONObject r)throws Exception {
         JSONArray sold=new JSONArray();for(int n=1;n<=r.optInt("total");n++)if(r.optJSONObject("sales").has(""+n))sold.put(n);
@@ -371,7 +395,7 @@ public class MainActivity extends Activity {
             String backup=r.toString();
             for(int i=0;i<rows.length();i++){JSONObject order=rows.getJSONObject(i);String id=order.optString("id");if(!"accepted".equals(order.optString("status"))||imported.has(id))continue;JSONArray nums=order.getJSONArray("numbers");for(int j=0;j<nums.length();j++){String key=""+nums.getInt(j);if(!sales.has(key))sales.put(key,new JSONObject().put("name",order.optString("name")).put("phone",order.optString("phone")).put("paid",false).put("requestId",id));}imported.put(id,true);}
             r.put("webImported",imported).put("webRequests",rows).put("webRevision",response.getJSONObject("raffle").getInt("revision"));
-            if(!save()){JSONObject old=new JSONObject(backup);r.put("sales",old.getJSONObject("sales"));if(old.has("webImported"))r.put("webImported",old.getJSONObject("webImported"));else r.remove("webImported");return false;}return true;
+            if(!save()){JSONObject old=new JSONObject(backup);r.put("sales",old.getJSONObject("sales"));if(old.has("webImported"))r.put("webImported",old.getJSONObject("webImported"));else r.remove("webImported");return false;}try{OrderNotifications.observe(this,profile.optString("id"),new JSONObject(backup),rows);}catch(Exception ignored){}return true;
         }catch(Exception e){toast(e.getMessage());return false;}
     }
     void syncOnline(JSONObject r,boolean visible,Runnable finished) {
@@ -392,7 +416,7 @@ public class MainActivity extends Activity {
         current=r;screen("Pedidos recebidos",true);viewingRequests=true;body.addView(label(r.optString("name"),18));
         body.addView(label("Pedidos só viram vendas após você aceitar. Entram como não pagos.",13));
         button("Atualizar pedidos",body,()->syncOnline(r,true,()->requestsScreen(r)));
-        JSONArray rows=r.optJSONArray("webRequests");if(rows==null||pendingCount(r)==0)body.addView(label("Nenhum pedido pendente. A sincronização automática funciona com o app aberto e internet.",14));
+        JSONArray rows=r.optJSONArray("webRequests");if(rows==null||pendingCount(r)==0)body.addView(label("Nenhum pedido pendente. Mantenha internet e notificações habilitadas para receber avisos.",14));
         if(rows!=null)for(int i=0;i<rows.length();i++){JSONObject order=rows.optJSONObject(i);if(!"pending".equals(order.optString("status")))continue;
             ArrayList<Integer> nums=new ArrayList<>();JSONArray ns=order.optJSONArray("numbers");for(int j=0;j<ns.length();j++)nums.add(ns.optInt(j));
             body.addView(label(order.optString("name")+" — "+ReceiptSupport.numbers(nums)+"\n"+order.optString("phone"),15));

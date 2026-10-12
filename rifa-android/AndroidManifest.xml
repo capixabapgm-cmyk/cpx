@@ -1,9 +1,12 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="br.com.minhasrifas" android:versionCode="8" android:versionName="1.7">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="br.com.minhasrifas" android:versionCode="9" android:versionName="1.8">
     <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="35" />
     <application android:label="Minhas Rifas" android:theme="@android:style/Theme.Material.Light.NoActionBar" android:icon="@drawable/icon" android:allowBackup="false" android:supportsRtl="true">
-        <activity android:name=".MainActivity" android:exported="true" android:screenOrientation="portrait" android:windowSoftInputMode="adjustResize">
+        <activity android:name=".MainActivity" android:exported="true" android:launchMode="singleTop" android:screenOrientation="portrait" android:windowSoftInputMode="adjustResize">
             <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
         </activity>
+        <service android:name=".OrderJobService" android:permission="android.permission.BIND_JOB_SERVICE" android:exported="true"/>
     </application>
 </manifest>

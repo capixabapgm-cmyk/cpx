@@ -71,3 +71,13 @@ Execute `bash build.sh` com Java 21 (módulo jdk.compiler), Android SDK platafor
 5. Com um número disponível, confirme que o sorteio está desabilitado.
 6. Venda o último número, sorteie e reabra o resultado. Confirme que não é possível sortear novamente ou editar as vendas.
 7. Crie outra rifa e confirme que suas vendas são independentes.
+
+## Versão 1.8 — notificações e aparência
+
+Configurações / cores / notificações permite seis cores (verde, vermelho, rosa, amarelo, azul, roxo). Vendidos permanecem verdes; amarelo usa texto escuro para contraste. Preferências visuais são locais e não alteram as rifas ou backups.
+
+Avisos usam IDs de pedidos com registro persistente por usuário e rifa, evitando repetição e detectando novos pedidos mesmo quando o total de pendentes não muda. O toque abre os pedidos da rifa. Android 13+ pede POST_NOTIFICATIONS; versões anteriores usam o canal de notificações. É possível desativar avisos nas configurações.
+
+JobScheduler consulta em segundo plano com internet, período mínimo de 15 minutos, persistência após reiniciar e sem serviço contínuo. Economia de bateria/Doze pode atrasar a execução; forçar parada impede execução até reabrir. Não é push instantâneo. O job apenas consulta e gera avisos: nunca muda vendas, importa compradores ou grava backup. Usa a sessão e conta atuais e cancela avisos e agendamento ao sair. Pedidos já presentes no cache antes da atualização não geram avisos retroativos.
+
+Atualize por cima da versão 1.7 com a mesma assinatura. Não precisa executar SQL nem mudar segredos no Cloudflare. A publicação atualiza apenas o link de APK dos convites. Compilação, assinatura e testes de detecção de pedidos foram verificados localmente; permissão, toque e execução em segundo plano precisam ser conferidos no aparelho real.

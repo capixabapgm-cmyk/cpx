@@ -14,10 +14,13 @@ public final class OnlineClient {
         return "https://"+uri.getHost();
     }
     public static JSONObject call(String base,String path,String method,String token,int revision,JSONObject body) throws Exception {
+        return callWithSession(base,path,method,token,revision,body,session,backupRevision);
+    }
+    public static JSONObject callWithSession(String base,String path,String method,String token,int revision,JSONObject body,String accountSession,int accountRevision) throws Exception {
         HttpsURLConnection c=(HttpsURLConnection)new URL(base(base)+path).openConnection();
         c.setInstanceFollowRedirects(false);c.setConnectTimeout(12000);c.setReadTimeout(20000);c.setRequestMethod(method);
         c.setRequestProperty("Accept","application/json");
-        if(!session.isEmpty()&&base(base).equals(DEFAULT_BASE)){c.setRequestProperty("X-Session-Token",session);c.setRequestProperty("X-Backup-Revision",""+backupRevision);}
+        if(!accountSession.isEmpty()&&base(base).equals(DEFAULT_BASE)){c.setRequestProperty("X-Session-Token",accountSession);c.setRequestProperty("X-Backup-Revision",""+accountRevision);}
         if(token!=null)c.setRequestProperty("Authorization","Bearer "+token);
         if(revision>=0)c.setRequestProperty("If-Match",""+revision);
         try {
