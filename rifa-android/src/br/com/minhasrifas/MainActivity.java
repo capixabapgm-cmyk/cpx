@@ -200,12 +200,48 @@ public class MainActivity extends Activity {
                 phoneRows.add(phone); row.addView(phone);
             }
             row.setOnClickListener(v->receipt(r,key));
+            if(!r.has("winner"))button("Excluir cliente / liberar números",row,()->deleteBuyer(r,key));
             View divider=new View(this); divider.setBackgroundColor(Color.rgb(218,228,222)); body.addView(divider,new LinearLayout.LayoutParams(-1,dp(1)));
         }
         body.addView(label("Toque no comprador para ver ou compartilhar o comprovante.",12));
         if(!r.has("winner") && sold(r)<r.optInt("total")) button("+ Comprador / vários números",body,()->bulkSale(r));
         button("Exportar lista (CSV)",body,()->{StringBuilder csv=new StringBuilder("\uFEFFNúmero;Nome;Telefone\r\n"); JSONObject sales=r.optJSONObject("sales");for(int n=1;n<=r.optInt("total");n++){JSONObject b=sales.optJSONObject(""+n);if(b!=null)csv.append(number(n)).append(';').append(csvCell(b.optString("name"))).append(';').append(csvCell(b.optString("phone"))).append("\r\n");} exportText=csv.toString(); Intent i=new Intent(Intent.ACTION_CREATE_DOCUMENT);i.setType("text/csv");i.addCategory(Intent.CATEGORY_OPENABLE);i.putExtra(Intent.EXTRA_TITLE,"compradores.csv");startActivityForResult(i,11);});
         button("Voltar à rifa",body,()->detail(r));
+    }
+    void deleteBuyer(JSONObject r,String key){
+        if(onlineBusy||accountBusy){toast("Aguarde a sincronização atual.");return;}
+        if(r.has("winner")){toast("Rifa já sorteada.");return;}
+        ArrayList<Integer> nums=groups(r).get(key);if(nums==null)return;
+        boolean linked=false;for(int n:nums)if(!r.optJSONObject("sales").optJSONObject(""+n).optString("requestId").isEmpty())linked=true;
+        if(linked)managementRefresh(r,()->buyerDeleteDialog(r,key));else buyerDeleteDialog(r,key);
+    }
+    void buyerDeleteDialog(JSONObject r,String key){
+        ArrayList<Integer> selected=groups(r).get(key);if(selected==null){buyers(r);return;}
+        JSONObject buyer=r.optJSONObject("sales").optJSONObject(""+selected.get(0));final int revision=r.optInt("webRevision",-1);
+        new AlertDialog.Builder(this).setTitle("Excluir cliente?").setMessage(buyer.optString("name")+"\nNúmeros: "+ReceiptSupport.numbers(selected)+"\n\nRemover este cliente desta rifa e liberar seus números? Pedidos online vinculados serão cancelados. Os demais compradores serão preservados.")
+            .setNegativeButton("Cancelar",null).setPositiveButton("Excluir e liberar",(d,w)->deleteBuyerConfirmed(r,key,selected,revision)).show();
+    }
+    void deleteBuyerConfirmed(JSONObject r,String key,ArrayList<Integer> selected,int revision){
+        if(onlineBusy||accountBusy){toast("Aguarde a sincronização atual.");return;}if(r.has("winner"))return;
+        boolean liveRaffle=false;for(int i=0;i<raffles.length();i++)if(raffles.optJSONObject(i)==r)liveRaffle=true;if(!liveRaffle){toast("Dados atualizados. Abra novamente a rifa para conferir o cliente.");home();return;}
+        ArrayList<Integer> currentNumbers=groups(r).get(key);if(currentNumbers==null||!currentNumbers.equals(selected)){toast("Os números deste cliente mudaram. Confira novamente.");buyers(r);return;}
+        try{JSONObject sales=r.getJSONObject("sales");Set<String> requestIds=new LinkedHashSet<>(),selectedKeys=new HashSet<>();for(int n:selected){selectedKeys.add(""+n);String id=sales.getJSONObject(""+n).optString("requestId");if(!id.isEmpty())requestIds.add(id);}
+            if(requestIds.isEmpty()){JSONObject original=new JSONObject(sales.toString());for(int n:selected)sales.remove(""+n);if(save()){buyers(r);toast("Cliente excluído. Números liberados.");if(r.has("webId"))syncOnline(r,true,()->buyers(r));}else r.put("sales",original);return;}
+            JSONArray preserve=new JSONArray();Iterator<String> keys=sales.keys();while(keys.hasNext()){String n=keys.next();if(!selectedKeys.contains(n))preserve.put(Integer.parseInt(n));}
+            JSONObject data=new JSONObject().put("preserve",preserve);onlineBusy=true;managingOrders=true;
+            onlineTask(()->{
+                JSONObject last=null;int expected=revision;for(String id:requestIds){try{last=OnlineClient.call(r.optString("webBase"),"/api/raffles/"+r.optString("webId")+"/requests/"+id+"/delete","POST",r.optString("webToken"),expected,data);expected=last.getJSONObject("raffle").getInt("revision");}catch(Exception e){if(last==null)throw e;last.put("buyerDeleteError",e.getMessage());return last;}}return last;
+            },response->{
+                try{Set<String> cancelled=new HashSet<>();JSONArray ids=response.optJSONArray("cancelled");if(ids!=null)for(int i=0;i<ids.length();i++)cancelled.add(ids.optString(i));Map<String,String> owners=new LinkedHashMap<>();JSONObject live=r.getJSONObject("sales");Iterator<String> it=live.keys();while(it.hasNext()){String n=it.next();owners.put(n,live.getJSONObject(n).optString("requestId"));}
+                    // A shared order may have numbers reassigned to another buyer. Keep their sales.
+                    Set<String> sharedCancelled=new HashSet<>(cancelled);sharedCancelled.retainAll(requestIds);for(String n:RequestNumbers.detachedKeys(owners,sharedCancelled,selectedKeys))live.getJSONObject(n).remove("requestId");
+                    boolean complete=!response.has("buyerDeleteError");if(complete)for(int n:selected)live.remove(""+n);
+                    boolean applied=importRequests(r,response);onlineBusy=false;managingOrders=false;buyers(r);
+                    if(complete&&applied){toast("Cliente excluído. Números liberados.");onlineBusy=true;publishSnapshot(r,"/api/raffles/"+r.optString("webId"),r.optString("webBase"),r.optString("webToken"),true,()->{buyers(r);accountSync(false);});}
+                    else if(!complete)toast("Parte dos pedidos foi cancelada. Confira os números restantes e tente novamente. "+response.optString("buyerDeleteError"));
+                }catch(Exception e){onlineBusy=false;managingOrders=false;toast("Confira os compradores e atualize os pedidos antes de tentar novamente.");}
+            },()->managingOrders=false,true);
+        }catch(Exception e){onlineBusy=false;managingOrders=false;toast("Não foi possível excluir o cliente.");}
     }
     LinkedHashMap<String,ArrayList<Integer>> groups(JSONObject r) {
         LinkedHashMap<String,ArrayList<Integer>> groups=new LinkedHashMap<>();

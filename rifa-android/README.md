@@ -109,3 +109,7 @@ Excluir pedido / liberar números exige conexão e confirmação. Libera apenas 
 A preferência de pagamentos existente é preservada; o novo pedido escolhido entra como pago, conforme a versão 1.9.3. Todos os aparelhos que gerenciam a mesma conta devem usar 1.9.4 ou posterior; versões antigas não podem republicar uma rifa que teve pedido excluído. Banco adiciona automaticamente request_cancellations, sem comandos manuais ou mudança de segredos. Aguarde a publicação do Worker pelo Cloudflare antes de usar os novos botões.
 
 Testes locais cobrem liberação exclusiva, escolha entre aceito/pendente, preservação de venda manual, concorrência, falha com rollback, isolamento por conta, backup antigo e cancelamentos fora da primeira página de pedidos. Compilação e assinatura verificadas; fluxo completo ainda deve ser conferido no celular/Cloudflare real.
+
+## Versão 1.9.5 — excluir cliente em Compradores
+
+Cada cliente tem Excluir cliente / liberar números, com confirmação do nome e números. Vendas manuais são removidas localmente e sincronizadas; pedidos online vinculados são cancelados no servidor antes da liberação. Demais compradores são preservados, inclusive quando um pedido foi dividido/reassociado: seus números ficam como vendas manuais. Exclusão fica bloqueada após o sorteio. Se vários pedidos forem cancelados e ocorrer falha de rede, mostra progresso parcial e permite tentar novamente para os números restantes. Atualize por cima, sem limpar dados.
