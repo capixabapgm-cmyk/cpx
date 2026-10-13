@@ -37,3 +37,14 @@ test('Exclusão respeita outra conta e backup antigo não ressuscita pedido canc
   assert.equal((await call(e,'/api/account/backup','PUT',{revision:1,raffles:[r]},a.token)).status,409);
   r.sales={};assert.equal((await call(e,'/api/account/backup','PUT',{revision:1,raffles:[r]},a.token)).status,200);
 });
+test('Backup atrasado não bloqueia aceitar pedido; decisão atualiza números sem publicar a rifa',async()=>{
+  const {e,a}=await setup();const id=crypto.randomUUID(),orderId=crypto.randomUUID(),ownerToken='c'.repeat(64);
+  const owned=(path,method,data,revision)=>new Request('https://test.invalid/api/raffles/'+id+path,{method,headers:{Authorization:'Bearer '+ownerToken,'X-Session-Token':a.token,'X-Backup-Revision':'0','If-Match':String(revision),'X-Request-Changes':'1'},body:data?JSON.stringify(data):undefined});
+  const snapshot={name:'Aceitação independente',description:'',total:10,sold:[],closed:false};assert.equal((await worker.fetch(owned('','PUT',snapshot,0),e)).status,200);
+  const r={id:crypto.randomUUID(),accountId:a.user.id,webId:id,webToken:ownerToken,name:snapshot.name,description:'',total:10,sales:{}};assert.equal((await call(e,'/api/account/backup','PUT',{revision:0,raffles:[r]},a.token)).status,200);
+  assert.equal((await worker.fetch(owned('/requests','POST',{id:orderId,name:'Comprador',phone:'85999990000',numbers:[2,3]},0),e)).status,201);
+  assert.equal((await worker.fetch(owned('','PUT',snapshot,1),e)).status,409);
+  let response=await worker.fetch(owned('/requests/'+orderId+'/accept','POST',{},1),e);assert.equal(response.status,200);let data=await response.json();assert.equal(data.request.status,'accepted');assert.equal(data.requests[0].id,orderId);assert.equal(data.requests[0].status,'accepted');assert.deepEqual(data.cancelled,[]);assert.deepEqual(data.raffle.sold,[2,3]);
+  response=await worker.fetch(owned('/requests/'+orderId+'/accept','POST',{},1),e);data=await response.json();assert.equal(data.requests.length,1);assert.deepEqual(data.raffle.sold,[2,3]);
+  assert.equal((await call(e,'/api/account/backup','PUT',{revision:0,raffles:[r]},a.token)).status,409);
+});

@@ -16,6 +16,10 @@ async function body(request){
 function token(request){const value=request.headers.get('Authorization')?.replace(/^Bearer /,'');if(!value||!/^[a-f0-9]{64}$/.test(value))throw new ApiError('Acesso não autorizado.',401);return value;}
 async function owner(request,row,env){if(!row||await hash(token(request))!==row.owner_hash)throw new ApiError('Acesso não autorizado.',401);if(row.user_id){const user=await sessionUser(request,env);if(row.user_id!==user.id)throw new ApiError('Rifa de outra conta.',403);if(request.method==='PUT'||/\/(delete|keep)$/.test(new URL(request.url).pathname)){const backup=await env.DB.prepare('SELECT revision FROM backups WHERE user_id=?').bind(user.id).first();if(Number(request.headers.get('X-Backup-Revision'))!==(backup?.revision||0))throw new ApiError('A versão dos dados da conta mudou. Sincronize a conta antes de publicar.',409);}}}
 function requestRow(row){return {...row,numbers:JSON.parse(row.numbers)};}
+async function orderResult(env,row,order){
+  const rows=await env.DB.prepare('SELECT * FROM requests WHERE raffle_id=? ORDER BY created_at DESC LIMIT 1200').bind(row.id).all();
+  return {request:requestRow(order),raffle:publicRaffle(row),requests:rows.results.map(requestRow),cancelled:await cancelledIds(env,row.id)};
+}
 export default {
   async fetch(request,env){
     try {
@@ -71,7 +75,7 @@ export default {
       if(requestId&&request.method==='POST'){
         const order=await env.DB.prepare('SELECT * FROM requests WHERE id=? AND raffle_id=?').bind(requestId,id).first();if(!order)throw new ApiError('Pedido não encontrado.',404);
         if(action==='delete'||action==='keep')return json(await manageOrder(request,env,row,order,action,await body(request)));
-        if(order.status==='accepted'){if(action==='reject')throw new ApiError('Pedido já aceito.',409);return json({request:requestRow(order),raffle:publicRaffle(row)});}
+        if(order.status==='accepted'){if(action==='reject')throw new ApiError('Pedido já aceito.',409);return json(await orderResult(env,row,order));}
         if(order.status!=='pending')throw new ApiError('Pedido já recusado.',409);
         if(action==='reject'){
           await env.DB.prepare("UPDATE requests SET status='rejected' WHERE id=? AND status='pending'").bind(requestId).run();
@@ -87,7 +91,7 @@ export default {
         const updated=await env.DB.prepare('SELECT * FROM requests WHERE id=?').bind(requestId).first();
         if(action==='accept'&&updated.status!=='accepted')throw new ApiError('Algum número já foi vendido. Recuse o pedido ou combine outros números.',409);
         row=await env.DB.prepare('SELECT * FROM raffles WHERE id=?').bind(id).first();
-        return json({request:requestRow(updated),raffle:publicRaffle(row)});
+        return json(await orderResult(env,row,updated));
       }
       throw new ApiError('Método não permitido.',405);
     }catch(error){return json({error:error instanceof ApiError?error.message:'Não foi possível concluir. Tente novamente.'},error instanceof ApiError?error.status:500);}
