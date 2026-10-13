@@ -99,3 +99,13 @@ Imagem de cabeçalho e prévia do editor usam FIT_CENTER, adjustViewBounds e alt
 ## Versão 1.9.3 — pedidos pagos por padrão e comprovante
 
 Novos pedidos online aceitos/importados entram como pagos. Alteração manual para não pago continua disponível e pagamentos de vendas já existentes são preservados. Comprovante remove a linha Números não pagos e termina com Obrigado Deus abençoe! Atualize sem desinstalar; pacote e assinatura permanecem iguais.
+
+## Versão 1.9.4 — resolver duplicados e excluir pedidos
+
+Em Pedidos recebidos: Resolver pedidos duplicados compara pedidos ativos que têm números em comum; escolha o pedido mantido e confirme a lista dos removidos. Aceita o escolhido e cancela os demais atomicamente, liberando seus números exclusivos. Mostrar pedidos aceitos permite excluir também um pedido já aceito.
+
+Excluir pedido / liberar números exige conexão e confirmação. Libera apenas vendas vinculadas pelo requestId ao pedido cancelado, preservando vendas manuais e outros compradores. Pedidos recebidos são arquivados como cancelados/recusados, com registro persistente para não voltar após sincronizar outro aparelho. Histórico de rifas já sorteadas fica bloqueado.
+
+A preferência de pagamentos existente é preservada; o novo pedido escolhido entra como pago, conforme a versão 1.9.3. Todos os aparelhos que gerenciam a mesma conta devem usar 1.9.4 ou posterior; versões antigas não podem republicar uma rifa que teve pedido excluído. Banco adiciona automaticamente request_cancellations, sem comandos manuais ou mudança de segredos. Aguarde a publicação do Worker pelo Cloudflare antes de usar os novos botões.
+
+Testes locais cobrem liberação exclusiva, escolha entre aceito/pendente, preservação de venda manual, concorrência, falha com rollback, isolamento por conta, backup antigo e cancelamentos fora da primeira página de pedidos. Compilação e assinatura verificadas; fluxo completo ainda deve ser conferido no celular/Cloudflare real.

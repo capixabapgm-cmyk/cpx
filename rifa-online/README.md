@@ -83,3 +83,9 @@ O endereço existente `/?r=ID` agora inclui Open Graph no HTML inicial: nome, de
 Não exige atualizar APK, executar SQL ou mudar segredos. Publicar pelo GitHub dispara o Cloudflare; o Worker precisa receber `/`, `/index.html` e `/api/*` antes dos Assets (wrangler atualizado). No app, atualize e compartilhe o link para enviar a imagem atual ao servidor. A exibição efetiva e o cache da prévia são controlados pelo WhatsApp; links anteriormente enviados podem continuar com prévia antiga.
 
 Correção da prévia: a leitura interna do template usa `/` no binding ASSETS, porque `/index.html` pode redirecionar pelo HTML handling padrão do Cloudflare. Teste reproduz o 307 que antes perdia o ID da rifa. O parâmetro opcional `preview` (até 32 caracteres alfanuméricos, `_` ou `-`) permanece no og:url para permitir um novo teste no WhatsApp sem reutilizar o endereço antigo em cache.
+
+## Gerenciamento de pedidos (APK 1.9.4)
+
+POST requests/ID/delete e requests/ID/keep exigem dono, sessão quando vinculada à conta, revisão da rifa (If-Match) e revisão do backup. Keep recebe discard (até 100 IDs da mesma rifa com números em comum); preserve protege números de vendas locais que não são dos pedidos removidos. Alterações de estoque/status/cancelamentos são transacionais e bloqueadas após o sorteio. Exclusão repetida é idempotente.
+
+request_cancellations é criada automaticamente na primeira operação de gerenciamento. GET requests inclui cancelled separadamente da lista de 1200 pedidos para dispositivos removerem vendas vinculadas a cancelamentos antigos. Publicação por versões sem X-Request-Changes: 1 é recusada em rifas com cancelamentos; backups com vendas requestId canceladas também são recusados. Pedidos arquivados não são recriados em reenvios da mesma referência. Nenhum SQL manual ou alteração de segredo é necessário.

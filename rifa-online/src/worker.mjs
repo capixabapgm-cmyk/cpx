@@ -1,3 +1,5 @@
+import {cancelledIds} from './order-cancellations.mjs';
+import {manageOrder} from './order-management.mjs';
 import {linkPreview} from './link-preview.mjs';
 import {accountTheme} from './themes.mjs';
 import {ApiError,text,raffleData,requestData,publicRaffle} from './rules.mjs';
@@ -12,7 +14,7 @@ async function body(request){
   try {const data=JSON.parse(value);if(!data||Array.isArray(data)||typeof data!=='object')throw 0;return data;}catch{throw new ApiError('Dados inválidos.');}
 }
 function token(request){const value=request.headers.get('Authorization')?.replace(/^Bearer /,'');if(!value||!/^[a-f0-9]{64}$/.test(value))throw new ApiError('Acesso não autorizado.',401);return value;}
-async function owner(request,row,env){if(!row||await hash(token(request))!==row.owner_hash)throw new ApiError('Acesso não autorizado.',401);if(row.user_id){const user=await sessionUser(request,env);if(row.user_id!==user.id)throw new ApiError('Rifa de outra conta.',403);if(request.method==='PUT'){const backup=await env.DB.prepare('SELECT revision FROM backups WHERE user_id=?').bind(user.id).first();if(Number(request.headers.get('X-Backup-Revision'))!==(backup?.revision||0))throw new ApiError('Dados atualizados em outro aparelho. Sincronize a conta antes de publicar.',409);}}}
+async function owner(request,row,env){if(!row||await hash(token(request))!==row.owner_hash)throw new ApiError('Acesso não autorizado.',401);if(row.user_id){const user=await sessionUser(request,env);if(row.user_id!==user.id)throw new ApiError('Rifa de outra conta.',403);if(request.method==='PUT'||/\/(delete|keep)$/.test(new URL(request.url).pathname)){const backup=await env.DB.prepare('SELECT revision FROM backups WHERE user_id=?').bind(user.id).first();if(Number(request.headers.get('X-Backup-Revision'))!==(backup?.revision||0))throw new ApiError('Dados atualizados em outro aparelho. Sincronize a conta antes de publicar.',409);}}}
 function requestRow(row){return {...row,numbers:JSON.parse(row.numbers)};}
 export default {
   async fetch(request,env){
@@ -22,7 +24,7 @@ export default {
       if(!url.pathname.startsWith('/api/'))return env.ASSETS.fetch(request);
       if(/^\/api\/(auth|account|admin)\//.test(url.pathname))return json(await accountRoute(request,env,url));
       if(url.pathname==='/api/health')return json({ok:true,service:'minhas-rifas',version:1});
-      const match=url.pathname.match(/^\/api\/raffles\/([a-f0-9-]{36})(?:\/(requests)(?:\/([a-f0-9-]{36})\/(accept|reject))?)?$/);
+      const match=url.pathname.match(/^\/api\/raffles\/([a-f0-9-]{36})(?:\/(requests)(?:\/([a-f0-9-]{36})\/(accept|reject|delete|keep))?)?$/);
       if(!match)throw new ApiError('Página não encontrada.',404);
       const [,id,requests,requestId,action]=match;
       if(!idPattern.test(id))throw new ApiError('Rifa inválida.');
@@ -34,6 +36,7 @@ export default {
           else await env.DB.prepare('INSERT INTO raffles(id,owner_hash,name,description,total,sold,closed,image,updated_at) VALUES(?,?,?,?,?,?,?,?,?)').bind(id,await hash(credentials),data.name,data.description,data.total,JSON.stringify(data.sold),+data.closed,data.image,new Date().toISOString()).run();
         }else{
           await owner(request,row,env);
+          if((await cancelledIds(env,id)).length&&request.headers.get('X-Request-Changes')!=='1')throw new ApiError('Atualize o aplicativo para gerenciar pedidos excluídos com segurança.',409);
           // The device must acknowledge accepted orders before replacing availability.
           const expected=Number(request.headers.get('If-Match'));
           if(expected!==row.revision)throw new ApiError('A rifa mudou online. Atualize os pedidos antes de publicar novamente.',409);
@@ -63,10 +66,11 @@ export default {
       await owner(request,row,env);
       if(requests&&!requestId&&request.method==='GET'){
         const rows=await env.DB.prepare('SELECT * FROM requests WHERE raffle_id=? ORDER BY created_at DESC LIMIT 1200').bind(id).all();
-        return json({raffle:publicRaffle(row),requests:rows.results.map(requestRow)});
+        return json({cancelled:await cancelledIds(env,id),raffle:publicRaffle(row),requests:rows.results.map(requestRow)});
       }
       if(requestId&&request.method==='POST'){
         const order=await env.DB.prepare('SELECT * FROM requests WHERE id=? AND raffle_id=?').bind(requestId,id).first();if(!order)throw new ApiError('Pedido não encontrado.',404);
+        if(action==='delete'||action==='keep')return json(await manageOrder(request,env,row,order,action,await body(request)));
         if(order.status==='accepted'){if(action==='reject')throw new ApiError('Pedido já aceito.',409);return json({request:requestRow(order),raffle:publicRaffle(row)});}
         if(order.status!=='pending')throw new ApiError('Pedido já recusado.',409);
         if(action==='reject'){

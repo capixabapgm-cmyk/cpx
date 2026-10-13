@@ -23,3 +23,17 @@ test('Tema é privado por conta, reaparece no login e atualiza rifas públicas s
   await call(e,'/api/account/theme','PUT',{theme:'yellow'},a.token);data=await worker.fetch(new Request('https://test.invalid/api/raffles/'+id),e);const publicData=await data.json();assert.equal(publicData.theme,'yellow');assert.deepEqual(publicData.sold,[1]);
   assert.equal((await call(e,'/api/account/theme','PUT',{theme:'blue'})).status,401);
 });
+test('Exclusão respeita outra conta e backup antigo não ressuscita pedido cancelado',async()=>{
+  const {e,a}=await setup();const {user}=await signup(e,a);const id=crypto.randomUUID(),orderId=crypto.randomUUID(),ownerToken='d'.repeat(64);
+  const owned=(path,method,data,revision,session=a.token,backup=0)=>new Request('https://test.invalid/api/raffles/'+id+path,{method,headers:{Authorization:'Bearer '+ownerToken,'X-Session-Token':session,'X-Backup-Revision':String(backup),'If-Match':String(revision),'X-Request-Changes':'1'},body:data?JSON.stringify(data):undefined});
+  assert.equal((await worker.fetch(owned('','PUT',{name:'Rifa',description:'',total:10,sold:[],closed:false},0),e)).status,200);
+  assert.equal((await worker.fetch(owned('/requests','POST',{id:orderId,name:'Comprador',phone:'85999990000',numbers:[2]},0),e)).status,201);
+  assert.equal((await worker.fetch(owned('/requests/'+orderId+'/accept','POST',{},0),e)).status,200);
+  const r={id:crypto.randomUUID(),accountId:a.user.id,webId:id,webToken:ownerToken,name:'Rifa',description:'',total:10,sales:{'2':{name:'Comprador',phone:'',paid:true,requestId:orderId}}};
+  assert.equal((await call(e,'/api/account/backup','PUT',{revision:0,raffles:[r]},a.token)).status,200);
+  assert.equal((await worker.fetch(owned('/requests/'+orderId+'/delete','POST',{},2,user.token,1),e)).status,403);
+  assert.equal((await worker.fetch(owned('/requests/'+orderId+'/delete','POST',{},2,a.token,0),e)).status,409);
+  assert.equal((await worker.fetch(owned('/requests/'+orderId+'/delete','POST',{},2,a.token,1),e)).status,200);
+  assert.equal((await call(e,'/api/account/backup','PUT',{revision:1,raffles:[r]},a.token)).status,409);
+  r.sales={};assert.equal((await call(e,'/api/account/backup','PUT',{revision:1,raffles:[r]},a.token)).status,200);
+});

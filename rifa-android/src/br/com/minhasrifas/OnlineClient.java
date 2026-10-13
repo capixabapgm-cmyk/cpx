@@ -20,6 +20,7 @@ public final class OnlineClient {
         HttpsURLConnection c=(HttpsURLConnection)new URL(base(base)+path).openConnection();
         c.setInstanceFollowRedirects(false);c.setConnectTimeout(12000);c.setReadTimeout(20000);c.setRequestMethod(method);
         c.setRequestProperty("Accept","application/json");
+        c.setRequestProperty("X-Request-Changes","1");
         if(!accountSession.isEmpty()&&base(base).equals(DEFAULT_BASE)){c.setRequestProperty("X-Session-Token",accountSession);c.setRequestProperty("X-Backup-Revision",""+accountRevision);}
         if(token!=null)c.setRequestProperty("Authorization","Bearer "+token);
         if(revision>=0)c.setRequestProperty("If-Match",""+revision);

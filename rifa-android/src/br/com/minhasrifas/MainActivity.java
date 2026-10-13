@@ -24,7 +24,7 @@ public class MainActivity extends Activity {
     boolean onlineBusy=false,foreground=false,viewingRequests=false;
     int onlineCursor=0;
     JSONObject profile;
-    boolean accountBusy=false;
+    boolean accountBusy=false,managingOrders=false,showAcceptedOrders=false;
     long editCounter=0;
     Runnable backupJob=()->accountSync(false);
     Runnable onlinePoll=new Runnable(){public void run(){if(!foreground||profile==null)return;syncTheme(false);for(int i=0;i<raffles.length();i++){JSONObject r=raffles.optJSONObject((onlineCursor+i)%raffles.length());if(r.has("webId")){onlineCursor=(onlineCursor+i+1)%raffles.length();syncOnline(r,false,null);break;}}onlineHandler.postDelayed(this,30000);}};
@@ -302,7 +302,7 @@ public class MainActivity extends Activity {
         JSONArray snapshot=new JSONArray(raffles.toString());for(int i=0;i<snapshot.length();i++){JSONObject copy=snapshot.getJSONObject(i),original=raffles.getJSONObject(i);String data=publicSnapshot(original).optString("image");if(data.isEmpty())data=original.optString("imageData");copy.put("imageData",data);copy.remove("image");}return snapshot;
     }
     void accountSync(boolean visible) {
-        if(profile==null||accountBusy||OnlineClient.session.isEmpty())return;
+        if(profile==null||accountBusy||managingOrders||OnlineClient.session.isEmpty())return;
         final String scope=accountKey();final long counter=editCounter;
         if(!getPreferences(0).getBoolean(scope+":dirty",false)){restoreBackup(false);return;}
         try {JSONObject data=new JSONObject().put("revision",getPreferences(0).getInt(scope+":revision",0)).put("raffles",backupSnapshot());
@@ -310,7 +310,7 @@ public class MainActivity extends Activity {
         }catch(Exception e){if(visible)toast("Não foi possível preparar o backup. Os dados locais foram preservados.");}
     }
     void restoreBackup(boolean force) {
-        if(profile==null||accountBusy)return;final String scope=accountKey();final long counter=editCounter;
+        if(profile==null||accountBusy||managingOrders)return;final String scope=accountKey();final long counter=editCounter;
         accountTask(()->OnlineClient.call(OnlineClient.DEFAULT_BASE,"/api/account/backup","GET",OnlineClient.session,-1,null),response->{
             if(profile==null||!scope.equals(accountKey())||counter!=editCounter){if(force)toast("Há alterações locais recentes. Sincronize novamente.");return;}
             int revision=response.optInt("revision");if(!force&&revision==getPreferences(0).getInt(scope+":revision",0))return;
@@ -339,7 +339,7 @@ public class MainActivity extends Activity {
         getWindow().setStatusBarColor(green);int flags=getWindow().getDecorView().getSystemUiVisibility();getWindow().getDecorView().setSystemUiVisibility(green==themeColors[3]?flags|View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR:flags&~View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
     }
     void syncTheme(boolean visible){
-        if(profile==null||accountBusy||OnlineClient.session.isEmpty())return;
+        if(profile==null||accountBusy||managingOrders||OnlineClient.session.isEmpty())return;
         final String scope=accountKey();final String chosen=profile.optString("theme","green");boolean dirty=getPreferences(0).getBoolean(scope+":themeDirty",false);
         try{JSONObject data=dirty?new JSONObject().put("theme",chosen):null;
             accountTask(()->OnlineClient.call(OnlineClient.DEFAULT_BASE,"/api/account/theme",dirty?"PUT":"GET",OnlineClient.session,-1,data),response->{
@@ -408,22 +408,27 @@ public class MainActivity extends Activity {
         return new JSONObject().put("name",r.optString("name")).put("description",r.optString("description")).put("total",r.optInt("total")).put("sold",sold).put("closed",r.has("winner")).put("image",image);
     }
     boolean importRequests(JSONObject r,JSONObject response) {
+        String backup=r.toString();JSONObject clearedSales=null,clearedImported=null;
         try {
-            JSONArray rows=response.getJSONArray("requests");JSONObject imported=r.optJSONObject("webImported");if(imported==null)imported=new JSONObject();JSONObject sales=r.optJSONObject("sales");
-            // Validate every accepted order before importing any numbers.
-            for(int i=0;i<rows.length();i++){JSONObject order=rows.getJSONObject(i);if(!"accepted".equals(order.optString("status"))||imported.has(order.optString("id")))continue;JSONArray nums=order.getJSONArray("numbers");for(int j=0;j<nums.length();j++){JSONObject old=sales.optJSONObject(""+nums.getInt(j));if(old!=null&&!order.optString("id").equals(old.optString("requestId")))throw new Exception("Conflito em número já vendido neste celular. Confira os pedidos antes de sincronizar.");}}
-            String backup=r.toString();
+            JSONArray rows=response.getJSONArray("requests");JSONObject staged=new JSONObject(backup);JSONObject imported=staged.optJSONObject("webImported");if(imported==null)imported=new JSONObject();JSONObject sales=staged.getJSONObject("sales");
+            // Cancellation IDs include old deletions outside the normal request-list page.
+            Set<String> cancelled=new HashSet<>();JSONArray ids=response.optJSONArray("cancelled");if(ids!=null)for(int i=0;i<ids.length();i++)cancelled.add(ids.optString(i));
+            for(int i=0;i<rows.length();i++){JSONObject order=rows.getJSONObject(i);if("rejected".equals(order.optString("status")))cancelled.add(order.optString("id"));}
+            Map<String,String> owners=new LinkedHashMap<>();Iterator<String> salesKeys=sales.keys();while(salesKeys.hasNext()){String key=salesKeys.next();owners.put(key,sales.getJSONObject(key).optString("requestId"));}for(String key:RequestNumbers.releasedKeys(owners,cancelled))sales.remove(key);for(String id:cancelled)imported.remove(id);
+            clearedSales=new JSONObject(sales.toString());clearedImported=new JSONObject(imported.toString());
+            for(int i=0;i<rows.length();i++){JSONObject order=rows.getJSONObject(i);String id=order.optString("id");if(!"accepted".equals(order.optString("status"))||imported.has(id))continue;JSONArray nums=order.getJSONArray("numbers");for(int j=0;j<nums.length();j++){JSONObject old=sales.optJSONObject(""+nums.getInt(j));if(old!=null&&!id.equals(old.optString("requestId")))throw new Exception("Conflito com venda deste celular. Use Resolver pedidos duplicados ou exclua o pedido; vendas manuais serão preservadas.");}}
             for(int i=0;i<rows.length();i++){JSONObject order=rows.getJSONObject(i);String id=order.optString("id");if(!"accepted".equals(order.optString("status"))||imported.has(id))continue;JSONArray nums=order.getJSONArray("numbers");for(int j=0;j<nums.length();j++){String key=""+nums.getInt(j);if(!sales.has(key))sales.put(key,new JSONObject().put("name",order.optString("name")).put("phone",order.optString("phone")).put("paid",true).put("requestId",id));}imported.put(id,true);}
-            r.put("webImported",imported).put("webRequests",rows).put("webRevision",response.getJSONObject("raffle").getInt("revision"));
-            if(!save()){JSONObject old=new JSONObject(backup);r.put("sales",old.getJSONObject("sales"));if(old.has("webImported"))r.put("webImported",old.getJSONObject("webImported"));else r.remove("webImported");return false;}try{OrderNotifications.observe(this,profile.optString("id"),new JSONObject(backup),rows);}catch(Exception ignored){}return true;
-        }catch(Exception e){toast(e.getMessage());return false;}
+            r.put("sales",sales).put("webImported",imported).put("webRequests",rows).put("webRevision",response.getJSONObject("raffle").getInt("revision"));
+            if(!save()){JSONObject old=new JSONObject(backup);r.put("sales",old.getJSONObject("sales"));if(old.has("webImported"))r.put("webImported",old.getJSONObject("webImported"));else r.remove("webImported");return false;}
+            try{OrderNotifications.observe(this,profile.optString("id"),new JSONObject(backup),rows);}catch(Exception ignored){}return true;
+        }catch(Exception e){try{if(clearedSales!=null)r.put("sales",clearedSales).put("webImported",clearedImported);r.put("webRequests",response.getJSONArray("requests")).put("webRevision",response.getJSONObject("raffle").getInt("revision"));save();}catch(Exception ignored){}toast(e.getMessage());return false;}
     }
     void syncOnline(JSONObject r,boolean visible,Runnable finished) {
         if(onlineBusy){if(visible)toast("Aguarde a sincronização atual e tente novamente.");return;}if(!r.has("webId"))return;onlineBusy=true;
         final String base=r.optString("webBase"),id=r.optString("webId"),token=r.optString("webToken"),path="/api/raffles/"+id;
         onlineTask(()->{try{return OnlineClient.call(base,path+"/requests","GET",token,-1,null);}catch(Exception e){if(!r.has("webRevision")&&"Rifa não encontrada.".equals(e.getMessage()))return new JSONObject().put("newRaffle",true);throw e;}},response->{
             if(response.optBoolean("newRaffle")){publishSnapshot(r,path,base,token,visible,finished);return;}
-            if(!importRequests(r,response)){onlineBusy=false;return;}
+            if(!importRequests(r,response)){onlineBusy=false;if(viewingRequests&&current==r)requestsScreen(r);return;}
             publishSnapshot(r,path,base,token,visible,finished);
         },null,visible);
     }
@@ -432,17 +437,61 @@ public class MainActivity extends Activity {
             onlineTask(()->OnlineClient.call(base,path,"PUT",token,revision,snapshot),response->{try {r.put("webRevision",response.getInt("revision"));save();}catch(Exception e){toast("Falha ao salvar sincronização.");}onlineBusy=false;if(finished!=null)finished.run();else if(viewingRequests&&current==r){int scroll=((ScrollView)body.getParent()).getScrollY();requestsScreen(r);ScrollView view=(ScrollView)body.getParent();view.post(()->view.scrollTo(0,scroll));}},null,visible);
         }catch(Exception e){onlineBusy=false;if(visible)toast("Não foi possível publicar a rifa.");}
     }
+    ArrayList<Integer> orderNumbers(JSONObject order){ArrayList<Integer> nums=new ArrayList<>();JSONArray values=order.optJSONArray("numbers");if(values!=null)for(int i=0;i<values.length();i++)nums.add(values.optInt(i));return nums;}
+    boolean activeOrder(JSONObject order){return "pending".equals(order.optString("status"))||"accepted".equals(order.optString("status"));}
+    String orderLabel(JSONObject order){
+        String date=order.optString("created_at");try{SimpleDateFormat input=new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'",Locale.US);input.setTimeZone(TimeZone.getTimeZone("UTC"));date=new SimpleDateFormat("dd/MM/yyyy HH:mm",Locale.getDefault()).format(input.parse(date));}catch(Exception ignored){}
+        String id=order.optString("id");return order.optString("name")+" — "+ReceiptSupport.numbers(orderNumbers(order))+" • "+("accepted".equals(order.optString("status"))?"Aceito":"Pendente")+"\n"+date+" • Ref. "+id.substring(0,Math.min(8,id.length()));
+    }
+    JSONObject findOrder(JSONObject r,String id){JSONArray rows=r.optJSONArray("webRequests");if(rows!=null)for(int i=0;i<rows.length();i++)if(id.equals(rows.optJSONObject(i).optString("id")))return rows.optJSONObject(i);return null;}
+    ArrayList<JSONObject> conflicts(JSONObject r,JSONObject selected){ArrayList<JSONObject> list=new ArrayList<>();Set<Integer> nums=new HashSet<>(orderNumbers(selected));JSONArray rows=r.optJSONArray("webRequests");if(rows!=null)for(int i=0;i<rows.length();i++){JSONObject order=rows.optJSONObject(i);if(!activeOrder(order)||order.optString("id").equals(selected.optString("id")))continue;if(RequestNumbers.overlaps(nums,orderNumbers(order)))list.add(order);}return list;}
     void requestsScreen(JSONObject r) {
         current=r;screen("Pedidos recebidos",true);viewingRequests=true;body.addView(label(r.optString("name"),18));
         body.addView(label("Pedidos só viram vendas após você aceitar. Entram como pagos; você pode alterar para não pago.",13));
         button("Atualizar pedidos",body,()->syncOnline(r,true,()->requestsScreen(r)));
+        button("Resolver pedidos duplicados",body,()->managementRefresh(r,()->duplicatePicker(r)));
+        button(showAcceptedOrders?"Ocultar pedidos aceitos":"Mostrar pedidos aceitos",body,()->{showAcceptedOrders=!showAcceptedOrders;requestsScreen(r);});
         JSONArray rows=r.optJSONArray("webRequests");if(rows==null||pendingCount(r)==0)body.addView(label("Nenhum pedido pendente. Mantenha internet e notificações habilitadas para receber avisos.",14));
-        if(rows!=null)for(int i=0;i<rows.length();i++){JSONObject order=rows.optJSONObject(i);if(!"pending".equals(order.optString("status")))continue;
-            ArrayList<Integer> nums=new ArrayList<>();JSONArray ns=order.optJSONArray("numbers");for(int j=0;j<ns.length();j++)nums.add(ns.optInt(j));
-            body.addView(label(order.optString("name")+" — "+ReceiptSupport.numbers(nums)+"\n"+order.optString("phone"),15));
-            button("Aceitar pedido (não pago)",body,()->resolveRequest(r,order,true));button("Recusar pedido",body,()->resolveRequest(r,order,false));
+        if(rows!=null)for(int i=0;i<rows.length();i++){JSONObject order=rows.optJSONObject(i);if(!activeOrder(order)||"accepted".equals(order.optString("status"))&&!showAcceptedOrders)continue;
+            body.addView(label(orderLabel(order)+"\n"+order.optString("phone"),15));
+            if("pending".equals(order.optString("status"))){button("Aceitar pedido (pago)",body,()->resolveRequest(r,order,true));button("Recusar pedido",body,()->resolveRequest(r,order,false));}
+            if(!conflicts(r,order).isEmpty())button("Escolher qual pedido manter",body,()->managementRefresh(r,()->duplicatePicker(r)));
+            button("Excluir pedido / liberar números",body,()->managementRefresh(r,()->deleteOrderDialog(r,order.optString("id"))));
         }
         button("Voltar à rifa",body,()->detail(r));
+    }
+    void managementRefresh(JSONObject r,Runnable ready){
+        if(onlineBusy||accountBusy){toast("Aguarde a sincronização atual e tente novamente.");return;}if(r.has("winner")){toast("Rifa já sorteada. Seus pedidos estão encerrados.");return;}
+        onlineBusy=true;managingOrders=true;
+        onlineTask(()->OnlineClient.call(r.optString("webBase"),"/api/raffles/"+r.optString("webId")+"/requests","GET",r.optString("webToken"),-1,null),response->{importRequests(r,response);onlineBusy=false;managingOrders=false;ready.run();},()->managingOrders=false,true);
+    }
+    void duplicatePicker(JSONObject r){
+        ArrayList<JSONObject> options=new ArrayList<>();JSONArray rows=r.optJSONArray("webRequests");if(rows!=null)for(int i=0;i<rows.length();i++){JSONObject order=rows.optJSONObject(i);if(activeOrder(order)&&!conflicts(r,order).isEmpty())options.add(order);}
+        if(options.isEmpty()){toast("Nenhum pedido com números em comum.");requestsScreen(r);return;}
+        String[] names=new String[options.size()];for(int i=0;i<options.size();i++)names[i]=orderLabel(options.get(i));
+        new AlertDialog.Builder(this).setTitle("Escolha o pedido que deseja manter").setItems(names,(d,index)->{
+            JSONObject keep=options.get(index);ArrayList<JSONObject> discard=conflicts(r,keep);StringBuilder message=new StringBuilder("Manter:\n"+orderLabel(keep)+"\n\nExcluir os pedidos com números em comum:\n");ArrayList<String> ids=new ArrayList<>();for(JSONObject order:discard){ids.add(order.optString("id"));message.append(orderLabel(order)).append("\n");}
+            message.append("\nOs números exclusivos dos pedidos excluídos serão liberados. O pedido escolhido ficará aceito. Vendas manuais e outros pedidos serão preservados.");final int revision=r.optInt("webRevision",-1);
+            new AlertDialog.Builder(this).setTitle("Confirmar pedido mantido").setMessage(message.toString()).setNegativeButton("Cancelar",null).setPositiveButton("Manter este pedido",(a,b)->manageOrders(r,keep.optString("id"),"keep",ids,revision)).show();
+        }).setNegativeButton("Cancelar",null).show();
+    }
+    void deleteOrderDialog(JSONObject r,String id){
+        JSONObject order=findOrder(r,id);if(order==null||!activeOrder(order)){toast("Pedido já removido.");requestsScreen(r);return;}
+        final int revision=r.optInt("webRevision",-1);
+        new AlertDialog.Builder(this).setTitle("Excluir pedido?").setMessage(orderLabel(order)+"\n\nOs números vendidos vinculados somente a este pedido serão liberados no app e no site. Vendas manuais e outros pedidos serão preservados.")
+            .setNegativeButton("Cancelar",null).setPositiveButton("Excluir e liberar",(d,w)->manageOrders(r,id,"delete",new ArrayList<>(Arrays.asList(id)),revision)).show();
+    }
+    void manageOrders(JSONObject r,String target,String action,ArrayList<String> discard,int revision){
+        if(onlineBusy||accountBusy){toast("Aguarde a sincronização atual e tente novamente.");return;}if(r.has("winner")){toast("Rifa já sorteada.");return;}
+        try{JSONArray preserve=new JSONArray();JSONObject sales=r.getJSONObject("sales");Iterator<String> keys=sales.keys();while(keys.hasNext()){String key=keys.next();String owner=sales.getJSONObject(key).optString("requestId");if(!discard.contains(owner)&&!(action.equals("keep")&&target.equals(owner)))preserve.put(Integer.parseInt(key));}
+            JSONObject data=new JSONObject().put("discard",new JSONArray(discard)).put("preserve",preserve);onlineBusy=true;managingOrders=true;
+            String path="/api/raffles/"+r.optString("webId")+"/requests/"+target+"/"+action;
+            onlineTask(()->OnlineClient.call(r.optString("webBase"),path,"POST",r.optString("webToken"),revision,data),response->{
+                if(action.equals("keep")&&r.optJSONObject("webImported")!=null)r.optJSONObject("webImported").remove(target);
+                boolean applied=importRequests(r,response);managingOrders=false;onlineBusy=false;
+                if(applied){toast(action.equals("delete")?"Pedido excluído. Números vinculados liberados.":"Pedido mantido. Duplicados removidos.");onlineBusy=true;publishSnapshot(r,"/api/raffles/"+r.optString("webId"),r.optString("webBase"),r.optString("webToken"),true,()->{requestsScreen(r);accountSync(false);});}else requestsScreen(r);
+            },()->managingOrders=false,true);
+        }catch(Exception e){onlineBusy=false;managingOrders=false;toast("Não foi possível alterar os pedidos. Tente atualizar.");}
     }
     void resolveRequest(JSONObject r,JSONObject order,boolean accept) {
         if(onlineBusy){toast("Aguarde a sincronização atual.");return;}if(accept&&r.has("winner")){toast("Rifa já sorteada.");return;}

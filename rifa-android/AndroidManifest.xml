@@ -1,4 +1,4 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="br.com.minhasrifas" android:versionCode="13" android:versionName="1.9.3">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="br.com.minhasrifas" android:versionCode="14" android:versionName="1.9.4">
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>

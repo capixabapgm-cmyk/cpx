@@ -1,3 +1,4 @@
+import {cancelledIds} from './order-cancellations.mjs';
 import {accountTheme,saveTheme} from './themes.mjs';
 import {ApiError,text} from './rules.mjs';
 export const hash=async s=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s)))].map(b=>b.toString(16).padStart(2,'0')).join('');
@@ -74,7 +75,7 @@ export async function accountRoute(request,env,url){
         text(r.name,'Nome da rifa',200);text(r.description??'','Descrição',4000,false);
         if(r.imageData&&(typeof r.imageData!=='string'||r.imageData.length>250000||!/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(r.imageData)))throw new ApiError('Imagem inválida.');
         for(const [n,sale] of Object.entries(r.sales)){if(!/^\d+$/.test(n)||+n<1||+n>r.total||!sale||typeof sale!=='object')throw new ApiError('Venda inválida.');text(sale.name,'Comprador',200);text(sale.phone??'','Telefone',80,false);if(sale.paid!==undefined&&typeof sale.paid!=='boolean')throw new ApiError('Pagamento inválido.');}
-        if(r.webId){const online=await env.DB.prepare('SELECT * FROM raffles WHERE id=?').bind(r.webId).first();if(online){if(online.user_id&&online.user_id!==user.id)throw new ApiError('Rifa de outra conta.',403);if(!r.webToken||await hash(r.webToken)!==online.owner_hash)throw new ApiError('Acesso à rifa inválido.',403);owned.push(r.webId);}}
+        if(r.webId){const online=await env.DB.prepare('SELECT * FROM raffles WHERE id=?').bind(r.webId).first();if(online){if(online.user_id&&online.user_id!==user.id)throw new ApiError('Rifa de outra conta.',403);if(!r.webToken||await hash(r.webToken)!==online.owner_hash)throw new ApiError('Acesso à rifa inválido.',403);const cancelled=new Set(await cancelledIds(env,r.webId));if(Object.values(r.sales).some(sale=>cancelled.has(sale.requestId)))throw new ApiError('Atualize os pedidos antes de salvar: há pedidos excluídos neste backup.',409);owned.push(r.webId);}}
       }
       const existing=await env.DB.prepare('SELECT revision FROM backups WHERE user_id=?').bind(user.id).first();if((existing?.revision||0)!==data.revision)throw new ApiError('Dados alterados em outro aparelho. Atualize antes de salvar.',409);
       const serialized=JSON.stringify(data.raffles),updated=now();
