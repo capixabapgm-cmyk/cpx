@@ -125,3 +125,7 @@ Aceitar/recusar consulta o pedido atual e envia a decisão diretamente, sem exig
 Importa os pedidos válidos mesmo quando outro aceito tem conflito com vendas locais; preserva vendas manuais/pagamentos existentes, destaca conflitos e bloqueia publicação da disponibilidade enquanto persistirem. Conflito no backup continua sendo tratado como problema separado e não impede a decisão de um pedido válido. Não faz restauração forçada nem sobrescreve dados de outro aparelho.
 
 Testes JVM validam sequência GET/POST sem dependência de backup, repetição, recusa e isolamento de conflitos. Teste de API reproduz backup com revisão antiga e mostra aceitação válida mantendo bloqueio de publicação antiga. Assinatura e compilação verificadas; conferir fluxo no aparelho real após atualizar.
+
+## Versão 1.9.8 — configurar visual da rifa e rodapé
+
+Na tela da rifa, Configurar permite mostrar/ocultar todos os botões entre a imagem e os números. Configurar permanece visível; informações de vendas e pagamentos continuam disponíveis. Preferência fica por conta/por rifa neste aparelho e é mantida ao reabrir. Rodapé após os números destaca Obrigado Deus abençoe! e os créditos Minhas Rifas - desenvolvido por Francisco Andrade. Página pública também recebe agradecimento e créditos. Não altera aceitação, estoque, pagamentos ou sincronização.

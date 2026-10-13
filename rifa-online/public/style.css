@@ -4,3 +4,5 @@ textarea{width:100%;margin:15px 0;padding:12px;font:inherit;font-size:13px;min-h
 
 .theme-red{--accent:#b12626;--on-accent:white}.theme-pink{--accent:#ad2364;--on-accent:white}.theme-yellow{--accent:#f5c328;--on-accent:#1c2b26}.theme-blue{--accent:#2058ad;--on-accent:white}.theme-purple{--accent:#6e30a1;--on-accent:white}
 .grid button:disabled{background:var(--accent);color:var(--on-accent);opacity:1;cursor:default}.grid button[aria-pressed=true]{outline:3px solid #243b31;outline-offset:1px}.theme-yellow .brand,.theme-yellow .secondary{color:#1c2b26}
+
+footer{text-align:center;padding-top:16px;border-top:1px solid #dce5dd}footer .thanks{font-size:22px;font-weight:800;color:var(--accent);margin-bottom:8px}footer .credits{font-size:12px;margin-top:0}.theme-yellow footer .thanks{color:#1c2b26}
