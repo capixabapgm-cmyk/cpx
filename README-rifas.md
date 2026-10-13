@@ -2,7 +2,7 @@
 
 Aplicativo Android e página pública para pedidos de números.
 
-Versão 1.9: cor por conta nos botões, destaques, números vendidos e página pública, com notificações de pedidos. [Baixar APK 1.9.1](downloads/Minhas-Rifas-v1.9.1.apk). Atualize sem desinstalar. As contas continuam as mesmas.
+Versão 1.9: cor por conta nos botões, destaques, números vendidos e página pública, com notificações de pedidos. [Baixar APK 1.9.2](downloads/Minhas-Rifas-v1.9.2.apk). Atualize sem desinstalar. As contas continuam as mesmas.
 
 Versão 1.7: contas e cadastro por convite. [Ativar contas preservando as rifas atuais](rifa-online/ATIVAR-CONTAS.md). Configure o serviço antes de instalar a versão 1.7.
 

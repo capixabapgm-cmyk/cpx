@@ -111,6 +111,7 @@ public class MainActivity extends Activity {
         for(int i=0;i<raffles.length();i++) { final JSONObject r=raffles.optJSONObject(i); LinearLayout card=column(); card.setPadding(dp(16),dp(12),dp(16),dp(12)); card.setBackground(bg(Color.WHITE)); LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,-2); p.setMargins(0,dp(12),0,0); body.addView(card,p); card.addView(label(r.optString("name"),21)); card.addView(label(sold(r)+" de "+r.optInt("total")+" vendidos • "+(r.has("winner")?"Sorteada":"Em andamento"),14)); button("Abrir rifa",card,()->detail(r)); }
     }
     void showImage(ImageView view,String path) {
+        view.setMaxHeight(path==null||path.isEmpty()?dp(110):Integer.MAX_VALUE);
         if(path==null || path.isEmpty()) { view.setImageResource(br.com.minhasrifas.R.drawable.icon); return; }
         Bitmap b=BitmapFactory.decodeFile(path); if(b!=null)view.setImageBitmap(b); else view.setImageResource(br.com.minhasrifas.R.drawable.icon);
     }
@@ -119,7 +120,7 @@ public class MainActivity extends Activity {
         EditText name=field(form,"Nome da rifa",r==null?"":r.optString("name"),1);
         EditText desc=field(form,"Descrição / prêmio",r==null?"":r.optString("description"),android.text.InputType.TYPE_CLASS_TEXT|android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE);
         EditText total=field(form,"Quantidade de números (1 a 10.000)",r==null?"100":""+r.optInt("total"),2); if(r!=null) total.setEnabled(false);
-        imagePreview=new ImageView(this); imagePreview.setScaleType(ImageView.ScaleType.CENTER_CROP); form.addView(imagePreview,new LinearLayout.LayoutParams(-1,dp(150))); showImage(imagePreview,pendingImage);
+        imagePreview=new ImageView(this); imagePreview.setScaleType(ImageView.ScaleType.FIT_CENTER); imagePreview.setAdjustViewBounds(true); form.addView(imagePreview,new LinearLayout.LayoutParams(-1,-2)); showImage(imagePreview,pendingImage);
         button("Escolher imagem do celular",form,()->{ Intent intent=new Intent(Intent.ACTION_OPEN_DOCUMENT); intent.setType("image/*"); intent.addCategory(Intent.CATEGORY_OPENABLE); startActivityForResult(intent,10); });
         ScrollView sc=new ScrollView(this); sc.addView(form);
         AlertDialog dialog=new AlertDialog.Builder(this).setTitle(r==null?"Nova rifa":"Editar rifa").setView(sc).setNegativeButton("Cancelar",null).setPositiveButton("Salvar",null).create();
@@ -131,7 +132,7 @@ public class MainActivity extends Activity {
     }
     void detail(JSONObject r) {
         current=r; screen(r.optString("name"),true);
-        ImageView image=new ImageView(this); image.setScaleType(ImageView.ScaleType.CENTER_CROP); image.setBackground(bg(Color.rgb(221,235,226))); body.addView(image,new LinearLayout.LayoutParams(-1,dp(110))); showImage(image,r.optString("image"));
+        ImageView image=new ImageView(this); image.setScaleType(ImageView.ScaleType.FIT_CENTER); image.setAdjustViewBounds(true); image.setBackground(bg(Color.rgb(221,235,226))); body.addView(image,new LinearLayout.LayoutParams(-1,-2)); showImage(image,r.optString("image"));
         Button draw=button(r.has("winner")?"Ver resultado do sorteio":"Sortear rifa",body,()->draw(r));
         boolean ready=sold(r)==r.optInt("total"); draw.setEnabled((ready&&!paidNumbers(r).isEmpty())||r.has("winner")); draw.setAlpha(draw.isEnabled()?1f:.45f);
         if(!r.optString("description").isEmpty()) body.addView(label(r.optString("description"),14));

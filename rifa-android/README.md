@@ -91,3 +91,7 @@ Não é necessário executar SQL: a tabela `account_themes` é criada automatica
 ## Versão 1.9.1 — correção de inicialização
 
 Adiciona ACCESS_NETWORK_STATE, exigida ao agendar jobs que dependem de rede em Android recente. Restrições de permissão/estado/agendamento não propagam pela abertura do aplicativo. Preserva pacote, assinatura, dados e temas da versão 1.9. Teste JVM reproduz as exceções de segurança e indisponibilidade do agendador. Não há emulador ou celular conectado para confirmar a falha relatada; validar abertura no aparelho real após atualizar.
+
+## Versão 1.9.2 — cabeçalho sem corte
+
+Imagem de cabeçalho e prévia do editor usam FIT_CENTER, adjustViewBounds e altura variável, respeitando a proporção original. A página pública usa largura responsiva e altura automática. Não altera imagens salvas, rifas, compradores ou contas. Instale por cima da versão atual sem desinstalar.
