@@ -257,8 +257,8 @@ public class MainActivity extends Activity {
     void receipt(JSONObject r,String key) {
         ArrayList<Integer> nums=groups(r).get(key);if(nums==null||nums.isEmpty()){toast("Nenhum número encontrado para este comprador.");return;}
         JSONObject buyer=r.optJSONObject("sales").optJSONObject(""+nums.get(0));
-        ArrayList<Integer> paidList=new ArrayList<>(), unpaidList=new ArrayList<>();for(int n:nums){if(r.optJSONObject("sales").optJSONObject(""+n).optBoolean("paid",true))paidList.add(n);else unpaidList.add(n);}
-        String text=ReceiptSupport.receipt(r.optString("name"),r.optString("description"),buyer.optString("name"),buyer.optString("phone"),nums,new SimpleDateFormat("dd/MM/yyyy HH:mm",Locale.getDefault()).format(new Date()),profile.optString("pixName"),profile.optString("pixKey"))+"\n\nPagamento: "+paymentStatus(r,nums)+"\nNúmeros pagos: "+(paidList.isEmpty()?"Nenhum":ReceiptSupport.numbers(paidList))+"\nNúmeros não pagos: "+(unpaidList.isEmpty()?"Nenhum":ReceiptSupport.numbers(unpaidList))+"\nSomente os números pagos participam do sorteio.";
+        ArrayList<Integer> paidList=new ArrayList<>();for(int n:nums){if(r.optJSONObject("sales").optJSONObject(""+n).optBoolean("paid",true))paidList.add(n);}
+        String text=ReceiptSupport.receipt(r.optString("name"),r.optString("description"),buyer.optString("name"),buyer.optString("phone"),nums,new SimpleDateFormat("dd/MM/yyyy HH:mm",Locale.getDefault()).format(new Date()),profile.optString("pixName"),profile.optString("pixKey"))+"\n\nPagamento: "+paymentStatus(r,nums)+"\nNúmeros pagos: "+(paidList.isEmpty()?"Nenhum":ReceiptSupport.numbers(paidList))+"\nSomente os números pagos participam do sorteio.\n\nObrigado Deus abençoe!";
         TextView content=label(text,15);content.setPadding(dp(18),dp(8),dp(18),dp(8));content.setTextIsSelectable(true);ScrollView scroll=new ScrollView(this);scroll.addView(content);
         new AlertDialog.Builder(this).setTitle("Comprovante").setView(scroll).setNegativeButton("Fechar",null).setPositiveButton("Compartilhar",(d,w)->{
             Intent share=new Intent(Intent.ACTION_SEND);share.setType("text/plain");share.putExtra(Intent.EXTRA_SUBJECT,"Comprovante • "+r.optString("name"));share.putExtra(Intent.EXTRA_TEXT,text);
@@ -413,7 +413,7 @@ public class MainActivity extends Activity {
             // Validate every accepted order before importing any numbers.
             for(int i=0;i<rows.length();i++){JSONObject order=rows.getJSONObject(i);if(!"accepted".equals(order.optString("status"))||imported.has(order.optString("id")))continue;JSONArray nums=order.getJSONArray("numbers");for(int j=0;j<nums.length();j++){JSONObject old=sales.optJSONObject(""+nums.getInt(j));if(old!=null&&!order.optString("id").equals(old.optString("requestId")))throw new Exception("Conflito em número já vendido neste celular. Confira os pedidos antes de sincronizar.");}}
             String backup=r.toString();
-            for(int i=0;i<rows.length();i++){JSONObject order=rows.getJSONObject(i);String id=order.optString("id");if(!"accepted".equals(order.optString("status"))||imported.has(id))continue;JSONArray nums=order.getJSONArray("numbers");for(int j=0;j<nums.length();j++){String key=""+nums.getInt(j);if(!sales.has(key))sales.put(key,new JSONObject().put("name",order.optString("name")).put("phone",order.optString("phone")).put("paid",false).put("requestId",id));}imported.put(id,true);}
+            for(int i=0;i<rows.length();i++){JSONObject order=rows.getJSONObject(i);String id=order.optString("id");if(!"accepted".equals(order.optString("status"))||imported.has(id))continue;JSONArray nums=order.getJSONArray("numbers");for(int j=0;j<nums.length();j++){String key=""+nums.getInt(j);if(!sales.has(key))sales.put(key,new JSONObject().put("name",order.optString("name")).put("phone",order.optString("phone")).put("paid",true).put("requestId",id));}imported.put(id,true);}
             r.put("webImported",imported).put("webRequests",rows).put("webRevision",response.getJSONObject("raffle").getInt("revision"));
             if(!save()){JSONObject old=new JSONObject(backup);r.put("sales",old.getJSONObject("sales"));if(old.has("webImported"))r.put("webImported",old.getJSONObject("webImported"));else r.remove("webImported");return false;}try{OrderNotifications.observe(this,profile.optString("id"),new JSONObject(backup),rows);}catch(Exception ignored){}return true;
         }catch(Exception e){toast(e.getMessage());return false;}
@@ -434,7 +434,7 @@ public class MainActivity extends Activity {
     }
     void requestsScreen(JSONObject r) {
         current=r;screen("Pedidos recebidos",true);viewingRequests=true;body.addView(label(r.optString("name"),18));
-        body.addView(label("Pedidos só viram vendas após você aceitar. Entram como não pagos.",13));
+        body.addView(label("Pedidos só viram vendas após você aceitar. Entram como pagos; você pode alterar para não pago.",13));
         button("Atualizar pedidos",body,()->syncOnline(r,true,()->requestsScreen(r)));
         JSONArray rows=r.optJSONArray("webRequests");if(rows==null||pendingCount(r)==0)body.addView(label("Nenhum pedido pendente. Mantenha internet e notificações habilitadas para receber avisos.",14));
         if(rows!=null)for(int i=0;i<rows.length();i++){JSONObject order=rows.optJSONObject(i);if(!"pending".equals(order.optString("status")))continue;
@@ -446,7 +446,7 @@ public class MainActivity extends Activity {
     }
     void resolveRequest(JSONObject r,JSONObject order,boolean accept) {
         if(onlineBusy){toast("Aguarde a sincronização atual.");return;}if(accept&&r.has("winner")){toast("Rifa já sorteada.");return;}
-        new AlertDialog.Builder(this).setTitle(accept?"Aceitar pedido?":"Recusar pedido?").setMessage(order.optString("name")+(accept?" terá os números cadastrados como não pagos.":" terá este pedido recusado.")).setNegativeButton("Cancelar",null).setPositiveButton("Confirmar",(d,w)->{
+        new AlertDialog.Builder(this).setTitle(accept?"Aceitar pedido?":"Recusar pedido?").setMessage(order.optString("name")+(accept?" terá os números cadastrados como pagos. Você pode alterar para não pago depois.":" terá este pedido recusado.")).setNegativeButton("Cancelar",null).setPositiveButton("Confirmar",(d,w)->{
             syncOnline(r,true,()->{
                 if(accept){JSONArray nums=order.optJSONArray("numbers");for(int i=0;i<nums.length();i++)if(r.optJSONObject("sales").has(""+nums.optInt(i))){toast("Algum número já foi vendido. Combine outros números ou recuse o pedido.");return;}}
                 onlineBusy=true;String path="/api/raffles/"+r.optString("webId")+"/requests/"+order.optString("id")+(accept?"/accept":"/reject");

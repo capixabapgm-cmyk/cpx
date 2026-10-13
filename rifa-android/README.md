@@ -95,3 +95,7 @@ Adiciona ACCESS_NETWORK_STATE, exigida ao agendar jobs que dependem de rede em A
 ## Versão 1.9.2 — cabeçalho sem corte
 
 Imagem de cabeçalho e prévia do editor usam FIT_CENTER, adjustViewBounds e altura variável, respeitando a proporção original. A página pública usa largura responsiva e altura automática. Não altera imagens salvas, rifas, compradores ou contas. Instale por cima da versão atual sem desinstalar.
+
+## Versão 1.9.3 — pedidos pagos por padrão e comprovante
+
+Novos pedidos online aceitos/importados entram como pagos. Alteração manual para não pago continua disponível e pagamentos de vendas já existentes são preservados. Comprovante remove a linha Números não pagos e termina com Obrigado Deus abençoe! Atualize sem desinstalar; pacote e assinatura permanecem iguais.
