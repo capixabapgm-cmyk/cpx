@@ -147,24 +147,24 @@ public class MainActivity extends Activity {
     void detail(JSONObject r) {
         current=r; screen(r.optString("name"),true);
         ImageView image=new ImageView(this); image.setScaleType(ImageView.ScaleType.FIT_CENTER); image.setAdjustViewBounds(true); image.setBackground(bg(Color.rgb(221,235,226))); body.addView(image,new LinearLayout.LayoutParams(-1,-2)); showImage(image,r.optString("image"));
-        final ArrayList<View> controls=new ArrayList<>();
-        button("Configurar",body,()->raffleDisplayOptions(r,controls));
-        Button draw=button(r.has("winner")?"Ver resultado do sorteio":"Sortear rifa",body,()->draw(r));
-        controls.add(draw);
+        final LinearLayout controls=column();controls.setVisibility(View.GONE);
+        Button configure=button("Configurar",body,()->{});configure.setContentDescription("Configurar: mostrar controles");
+        configure.setOnClickListener(v->{boolean expanded=controls.getVisibility()!=View.VISIBLE;controls.setVisibility(expanded?View.VISIBLE:View.GONE);configure.setContentDescription(expanded?"Configurar: ocultar controles":"Configurar: mostrar controles");});
+        body.addView(controls,new LinearLayout.LayoutParams(-1,-2));
+        Button draw=button(r.has("winner")?"Ver resultado do sorteio":"Sortear rifa",controls,()->draw(r));
         boolean ready=sold(r)==r.optInt("total"); draw.setEnabled((ready&&!paidNumbers(r).isEmpty())||r.has("winner")); draw.setAlpha(draw.isEnabled()?1f:.45f);
         if(!r.optString("description").isEmpty()) body.addView(label(r.optString("description"),14));
         body.addView(label(sold(r)+" vendidos  •  "+(r.optInt("total")-sold(r))+" disponíveis",14));
         body.addView(label(paidNumbers(r).size()+" pagos • "+(sold(r)-paidNumbers(r).size())+" não pagos. Só números pagos participam.",12));
         ProgressBar progress=new ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal); progress.setMax(r.optInt("total")); progress.setProgress(sold(r)); body.addView(progress);
         if(!ready)body.addView(label("Sorteio disponível ao vender todos os números.",12));
-        LinearLayout actions=new LinearLayout(this); body.addView(actions);controls.add(actions);
+        LinearLayout actions=new LinearLayout(this);controls.addView(actions);
         Button list=button("Compradores",actions,()->buyers(r)), editButton=button("Editar rifa",actions,()->edit(r));
         LinearLayout.LayoutParams left=new LinearLayout.LayoutParams(0,dp(40),1); left.setMargins(0,dp(4),dp(4),dp(4)); list.setLayoutParams(left);
         LinearLayout.LayoutParams right=new LinearLayout.LayoutParams(0,dp(40),1); right.setMargins(dp(4),dp(4),0,dp(4)); editButton.setLayoutParams(right);
-        controls.add(button(r.has("webId")?"Link e pedidos online ("+pendingCount(r)+")":"Gerar link para pedidos",body,()->onlineMenu(r)));
-        controls.add(button("Pix / copiar chave",body,()->new AlertDialog.Builder(this).setTitle("Pagamento por Pix").setMessage(PixInfo.instructions(profile.optString("pixName"),profile.optString("pixKey"))).setNegativeButton("Fechar",null).setPositiveButton("Copiar chave",(d,w)->{if(profile.optString("pixKey").isEmpty()){toast("Configure seu Pix em Minha conta.");return;}android.content.ClipboardManager clipboard=(android.content.ClipboardManager)getSystemService(CLIPBOARD_SERVICE);clipboard.setPrimaryClip(ClipData.newPlainText("Chave Pix",profile.optString("pixKey")));toast("Chave Pix copiada.");}).show()));
-        if(!r.has("winner") && !ready)controls.add(button("+ Comprador / vários números",body,()->bulkSale(r)));
-        boolean show=getPreferences(0).getBoolean(raffleControlsKey(r),true);for(View control:controls)control.setVisibility(show?View.VISIBLE:View.GONE);
+        button(r.has("webId")?"Link e pedidos online ("+pendingCount(r)+")":"Gerar link para pedidos",controls,()->onlineMenu(r));
+        button("Pix / copiar chave",controls,()->new AlertDialog.Builder(this).setTitle("Pagamento por Pix").setMessage(PixInfo.instructions(profile.optString("pixName"),profile.optString("pixKey"))).setNegativeButton("Fechar",null).setPositiveButton("Copiar chave",(d,w)->{if(profile.optString("pixKey").isEmpty()){toast("Configure seu Pix em Minha conta.");return;}android.content.ClipboardManager clipboard=(android.content.ClipboardManager)getSystemService(CLIPBOARD_SERVICE);clipboard.setPrimaryClip(ClipData.newPlainText("Chave Pix",profile.optString("pixKey")));toast("Chave Pix copiada.");}).show());
+        if(!r.has("winner") && !ready)button("+ Comprador / vários números",controls,()->bulkSale(r));
         body.addView(label("Números • Cor do tema = vendido",14));
         GridLayout grid=new GridLayout(this); body.addView(grid,new LinearLayout.LayoutParams(-1,-2));
         int available=getResources().getDisplayMetrics().widthPixels-dp(20);
@@ -174,14 +174,6 @@ public class MainActivity extends Activity {
         LinearLayout footer=column();footer.setPadding(dp(14),dp(18),dp(14),dp(18));footer.setBackground(bg(green));LinearLayout.LayoutParams fp=new LinearLayout.LayoutParams(-1,-2);fp.setMargins(0,dp(18),0,0);body.addView(footer,fp);
         TextView thanks=label("Obrigado Deus abençoe!",20);thanks.setTypeface(Typeface.DEFAULT,Typeface.BOLD);thanks.setTextColor(accentText());thanks.setGravity(Gravity.CENTER);footer.addView(thanks);
         TextView credits=label("Minhas Rifas - desenvolvido por Francisco Andrade",12);credits.setTextColor(accentText());credits.setGravity(Gravity.CENTER);footer.addView(credits);
-    }
-    String raffleControlsKey(JSONObject r){return accountKey()+":controls:"+r.optString("id");}
-    void raffleDisplayOptions(JSONObject r,ArrayList<View> controls){
-        LinearLayout form=column();form.setPadding(dp(18),dp(12),dp(18),dp(12));
-        Switch show=new Switch(this);show.setText("Mostrar botões da rifa");show.setChecked(getPreferences(0).getBoolean(raffleControlsKey(r),true));form.addView(show);
-        form.addView(label("Mostra ou oculta sorteio, compradores, editar rifa, pedidos, Pix e adicionar comprador. Configurar permanece disponível.",14));
-        show.setOnCheckedChangeListener((button,visible)->{getPreferences(0).edit().putBoolean(raffleControlsKey(r),visible).apply();for(View control:controls)control.setVisibility(visible?View.VISIBLE:View.GONE);});
-        new AlertDialog.Builder(this).setTitle("Configurar visual da rifa").setView(form).setPositiveButton("Fechar",null).show();
     }
     void sale(JSONObject r,int n) {
         JSONObject sales=r.optJSONObject("sales"), old=sales.optJSONObject(""+n);

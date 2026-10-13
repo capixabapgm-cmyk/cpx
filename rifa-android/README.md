@@ -129,3 +129,7 @@ Testes JVM validam sequência GET/POST sem dependência de backup, repetição, 
 ## Versão 1.9.8 — configurar visual da rifa e rodapé
 
 Na tela da rifa, Configurar permite mostrar/ocultar todos os botões entre a imagem e os números. Configurar permanece visível; informações de vendas e pagamentos continuam disponíveis. Preferência fica por conta/por rifa neste aparelho e é mantida ao reabrir. Rodapé após os números destaca Obrigado Deus abençoe! e os créditos Minhas Rifas - desenvolvido por Francisco Andrade. Página pública também recebe agradecimento e créditos. Não altera aceitação, estoque, pagamentos ou sincronização.
+
+## Versão 1.9.9 — Configurar abre/recolhe diretamente
+
+Configurar alterna o painel de controles logo abaixo do botão, sem abrir diálogo. Primeiro toque mostra sorteio, compradores, editar, pedidos, Pix e adicionar comprador; segundo toque recolhe. Ao abrir a rifa, o painel começa fechado. Informações, números e rodapé continuam visíveis. Preferências antigas de exibição deixam de controlar o painel; dados da rifa e da conta permanecem intactos.
