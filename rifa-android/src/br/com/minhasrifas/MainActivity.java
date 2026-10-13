@@ -26,8 +26,22 @@ public class MainActivity extends Activity {
     JSONObject profile;
     boolean accountBusy=false,managingOrders=false,showAcceptedOrders=false;
     long editCounter=0;
-    Runnable backupJob=()->accountSync(false);
-    Runnable onlinePoll=new Runnable(){public void run(){if(!foreground||profile==null)return;syncTheme(false);for(int i=0;i<raffles.length();i++){JSONObject r=raffles.optJSONObject((onlineCursor+i)%raffles.length());if(r.has("webId")){onlineCursor=(onlineCursor+i+1)%raffles.length();syncOnline(r,false,null);break;}}onlineHandler.postDelayed(this,30000);}};
+    Runnable backupJob=new Runnable(){public void run(){
+        if(profile==null||!foreground)return;
+        if(onlineBusy||accountBusy||managingOrders){onlineHandler.postDelayed(this,500);return;}
+        accountSync(false);
+    }};
+    int pollTurn=0;
+    Runnable onlinePoll=new Runnable(){public void run(){
+        if(!foreground||profile==null)return;
+        if(!onlineBusy&&!accountBusy&&!managingOrders){
+            boolean hasOnline=false;for(int i=0;i<raffles.length();i++)if(raffles.optJSONObject(i).has("webId"))hasOnline=true;
+            // Alternate account work with order work; never start both in the same cycle.
+            if(!hasOnline||pollTurn++%3==0)syncTheme(false);
+            else for(int i=0;i<raffles.length();i++){JSONObject r=raffles.optJSONObject((onlineCursor+i)%raffles.length());if(r.has("webId")){onlineCursor=(onlineCursor+i+1)%raffles.length();syncOnline(r,false,null);break;}}
+        }
+        onlineHandler.postDelayed(this,30000);
+    }};
     boolean visualSettingsOpen=false;
     final String[] themeIds={"green","red","pink","yellow","blue","purple"};
     final int[] themeColors={0xff185b49,0xffb12626,0xffad2364,0xfff5c328,0xff2058ad,0xff6e30a1};
@@ -338,7 +352,7 @@ public class MainActivity extends Activity {
         JSONArray snapshot=new JSONArray(raffles.toString());for(int i=0;i<snapshot.length();i++){JSONObject copy=snapshot.getJSONObject(i),original=raffles.getJSONObject(i);String data=publicSnapshot(original).optString("image");if(data.isEmpty())data=original.optString("imageData");copy.put("imageData",data);copy.remove("image");}return snapshot;
     }
     void accountSync(boolean visible) {
-        if(profile==null||accountBusy||managingOrders||OnlineClient.session.isEmpty())return;
+        if(profile==null||accountBusy||onlineBusy||managingOrders||OnlineClient.session.isEmpty())return;
         final String scope=accountKey();final long counter=editCounter;
         if(!getPreferences(0).getBoolean(scope+":dirty",false)){restoreBackup(false);return;}
         try {JSONObject data=new JSONObject().put("revision",getPreferences(0).getInt(scope+":revision",0)).put("raffles",backupSnapshot());
@@ -346,10 +360,10 @@ public class MainActivity extends Activity {
         }catch(Exception e){if(visible)toast("Não foi possível preparar o backup. Os dados locais foram preservados.");}
     }
     void restoreBackup(boolean force) {
-        if(profile==null||accountBusy||managingOrders)return;final String scope=accountKey();final long counter=editCounter;
+        if(profile==null||accountBusy||onlineBusy||managingOrders)return;final String scope=accountKey();final long counter=editCounter;
         accountTask(()->OnlineClient.call(OnlineClient.DEFAULT_BASE,"/api/account/backup","GET",OnlineClient.session,-1,null),response->{
             if(profile==null||!scope.equals(accountKey())||counter!=editCounter){if(force)toast("Há alterações locais recentes. Sincronize novamente.");return;}
-            int revision=response.optInt("revision");if(!force&&revision==getPreferences(0).getInt(scope+":revision",0))return;
+            int revision=response.optInt("revision");if(!force&&revision==getPreferences(0).getInt(scope+":revision",0)){OnlineClient.backupRevision=revision;return;}
             try {JSONArray restored=response.getJSONArray("raffles");for(int i=0;i<restored.length();i++){JSONObject r=restored.getJSONObject(i);String data=r.optString("imageData");if(!data.isEmpty()){byte[] bytes=android.util.Base64.decode(data.substring(data.indexOf(',')+1),android.util.Base64.DEFAULT);File f=new File(getFilesDir(),"restaurada-"+UUID.randomUUID()+".jpg");try(OutputStream out=new FileOutputStream(f)){out.write(bytes);}r.put("image",f.getAbsolutePath());}}
                 android.content.SharedPreferences.Editor prefs=getPreferences(0).edit();if(force)prefs.putString(scope+":antes-restauracao",raffles.toString());if(!prefs.putString(scope,restored.toString()).putInt(scope+":revision",revision).putBoolean(scope+":dirty",false).commit()){toast("Não foi possível restaurar; dados locais preservados.");return;}raffles=restored;OnlineClient.backupRevision=revision;home();if(force)toast("Dados da nuvem restaurados.");
             }catch(Exception e){toast("Não foi possível restaurar. Seus dados locais foram preservados.");}
@@ -375,7 +389,7 @@ public class MainActivity extends Activity {
         getWindow().setStatusBarColor(green);int flags=getWindow().getDecorView().getSystemUiVisibility();getWindow().getDecorView().setSystemUiVisibility(green==themeColors[3]?flags|View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR:flags&~View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
     }
     void syncTheme(boolean visible){
-        if(profile==null||accountBusy||managingOrders||OnlineClient.session.isEmpty())return;
+        if(profile==null||accountBusy||onlineBusy||managingOrders||OnlineClient.session.isEmpty())return;
         final String scope=accountKey();final String chosen=profile.optString("theme","green");boolean dirty=getPreferences(0).getBoolean(scope+":themeDirty",false);
         try{JSONObject data=dirty?new JSONObject().put("theme",chosen):null;
             accountTask(()->OnlineClient.call(OnlineClient.DEFAULT_BASE,"/api/account/theme",dirty?"PUT":"GET",OnlineClient.session,-1,data),response->{
@@ -399,7 +413,7 @@ public class MainActivity extends Activity {
         body.addView(label("A cor vale para toda a sua conta, inclusive os números vendidos e a página pública. Alterações sem internet serão enviadas ao reconectar.",13));
         Switch enabled=new Switch(this);enabled.setText("Avisar quando chegar novo pedido");enabled.setChecked(getPreferences(0).getBoolean("orderNotifications",true));body.addView(enabled);
         enabled.setOnCheckedChangeListener((b,on)->{getPreferences(0).edit().putBoolean("orderNotifications",on).commit();if(on){OrderNotifications.schedule(this);askNotificationPermission();}else OrderNotifications.clear(this);});
-        body.addView(label("Com o app aberto, a consulta ocorre a cada 30 segundos, alternando as rifas. Em segundo plano, o Android agenda consultas a partir de 15 minutos e pode atrasá-las para economizar bateria. É preciso internet; forçar parada impede os avisos até abrir o app.",13));
+        body.addView(label("Com o app aberto, as consultas alternam entre pedidos das rifas e backup da conta. Em segundo plano, o Android agenda consultas a partir de 15 minutos e pode atrasá-las para economizar bateria. É preciso internet; forçar parada impede os avisos até abrir o app.",13));
         button("Permissão de notificações no Android",body,()->{askNotificationPermission();Intent intent=new Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(android.provider.Settings.EXTRA_APP_PACKAGE,getPackageName());startActivity(intent);});
     }
     void openOrderIntent(Intent intent){if(profile==null||intent==null)return;String id=intent.getStringExtra("orderRaffle");if(id==null)return;intent.removeExtra("orderRaffle");for(int i=0;i<raffles.length();i++){JSONObject r=raffles.optJSONObject(i);if(id.equals(r.optString("webId"))){requestsScreen(r);syncOnline(r,false,()->requestsScreen(r));return;}}}
@@ -459,7 +473,14 @@ public class MainActivity extends Activity {
             try{OrderNotifications.observe(this,profile.optString("id"),new JSONObject(backup),rows);}catch(Exception ignored){}return true;
         }catch(Exception e){try{if(clearedSales!=null)r.put("sales",clearedSales).put("webImported",clearedImported);r.put("webRequests",response.getJSONArray("requests")).put("webRevision",response.getJSONObject("raffle").getInt("revision"));save();}catch(Exception ignored){}toast(e.getMessage());return false;}
     }
+    void waitForAccountSync(JSONObject r,boolean visible,Runnable finished,int attempts){
+        if(!foreground||profile==null||!profile.optString("id").equals(r.optString("accountId")))return;
+        if(accountBusy){if(attempts>=60){if(visible)toast("A sincronização da conta está demorando. Tente novamente.");return;}onlineHandler.postDelayed(()->waitForAccountSync(r,visible,finished,attempts+1),500);return;}
+        boolean live=false;for(int i=0;i<raffles.length();i++)if(raffles.optJSONObject(i)==r)live=true;if(!live){if(visible)toast("A conta foi atualizada. Abra a rifa novamente para conferir os pedidos.");home();return;}
+        syncOnline(r,visible,finished);
+    }
     void syncOnline(JSONObject r,boolean visible,Runnable finished) {
+        if(accountBusy){if(visible){toast("Aguardando a sincronização da conta para atualizar os pedidos.");waitForAccountSync(r,true,finished,0);}return;}
         if(onlineBusy){if(visible)toast("Aguarde a sincronização atual e tente novamente.");return;}if(!r.has("webId"))return;onlineBusy=true;
         final String base=r.optString("webBase"),id=r.optString("webId"),token=r.optString("webToken"),path="/api/raffles/"+id;
         onlineTask(()->{try{return OnlineClient.call(base,path+"/requests","GET",token,-1,null);}catch(Exception e){if(!r.has("webRevision")&&"Rifa não encontrada.".equals(e.getMessage()))return new JSONObject().put("newRaffle",true);throw e;}},response->{

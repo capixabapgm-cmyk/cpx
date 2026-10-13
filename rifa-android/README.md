@@ -113,3 +113,7 @@ Testes locais cobrem liberação exclusiva, escolha entre aceito/pendente, prese
 ## Versão 1.9.5 — excluir cliente em Compradores
 
 Cada cliente tem Excluir cliente / liberar números, com confirmação do nome e números. Vendas manuais são removidas localmente e sincronizadas; pedidos online vinculados são cancelados no servidor antes da liberação. Demais compradores são preservados, inclusive quando um pedido foi dividido/reassociado: seus números ficam como vendas manuais. Exclusão fica bloqueada após o sorteio. Se vários pedidos forem cancelados e ocorrer falha de rede, mostra progresso parcial e permite tentar novamente para os números restantes. Atualize por cima, sem limpar dados.
+
+## Versão 1.9.6 — coordenação entre conta e pedidos
+
+Sincronização de pedidos/publicação e sincronização de conta/backup/tema não começam simultaneamente. O polling alterna as fases para evitar que o backup mude a revisão enquanto a rifa está sendo publicada. A atualização manual de pedidos aguarda a conta terminar, com prazo de 30 segundos. O servidor continua bloqueando publicações e backups desatualizados; o aviso agora descreve mudança de versão sem atribuí-la necessariamente a outro aparelho. Nenhum dado, pagamento ou sorteio é redefinido.
