@@ -133,3 +133,9 @@ Na tela da rifa, Configurar permite mostrar/ocultar todos os botões entre a ima
 ## Versão 1.9.9 — Configurar abre/recolhe diretamente
 
 Configurar alterna o painel de controles logo abaixo do botão, sem abrir diálogo. Primeiro toque mostra sorteio, compradores, editar, pedidos, Pix e adicionar comprador; segundo toque recolhe. Ao abrir a rifa, o painel começa fechado. Informações, números e rodapé continuam visíveis. Preferências antigas de exibição deixam de controlar o painel; dados da rifa e da conta permanecem intactos.
+
+## Versão 1.9.10 — compartilhar link publicado sem sincronizar
+
+Compartilhar link publicado abre o compartilhamento diretamente para rifas já publicadas, sem depender de backup ou sobrescrever disponibilidade. Publicar alterações e atualizar pedidos fica separado para atualizar imagem/descrição/disponibilidade com as verificações de revisão mantidas. Uma rifa ainda não publicada exige a primeira publicação.
+
+Atualizar pedidos e abrir a lista fazem apenas GET/importação local, sem PUT de publicação ou validação da revisão do backup. Preservam aceitação, cancelamentos e pagamento existentes. Um conflito verdadeiro de backup/publicação não é resolvido com restauração forçada nem ocultado: deve ser conciliado separadamente; o link existente continua utilizável.

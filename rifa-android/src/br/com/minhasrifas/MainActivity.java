@@ -451,13 +451,23 @@ public class MainActivity extends Activity {
             try {byte[] bytes=new byte[32];new SecureRandom().nextBytes(bytes);StringBuilder token=new StringBuilder();for(byte b:bytes)token.append(String.format(Locale.US,"%02x",b&255));r.put("webId",UUID.randomUUID().toString()).put("webToken",token.toString()).put("webBase",base);if(!save()){r.remove("webId");r.remove("webToken");r.remove("webBase");return;}}catch(Exception e){toast("Não foi possível criar o link.");return;}
             syncOnline(r,true,()->shareLink(r));return;
         }
-        new AlertDialog.Builder(this).setTitle("Pedidos pela internet").setItems(new String[]{"Atualizar e compartilhar link","Pedidos recebidos ("+pendingCount(r)+")","Sincronizar agora"},(d,pos)->{
-            if(pos==0)syncOnline(r,true,()->shareLink(r));else if(pos==1){requestsScreen(r);syncOnline(r,true,()->requestsScreen(r));}else syncOnline(r,true,()->toast("Rifa e pedidos atualizados."));
+        new AlertDialog.Builder(this).setTitle("Pedidos pela internet").setItems(new String[]{"Compartilhar link publicado","Pedidos recebidos ("+pendingCount(r)+")","Publicar alterações e atualizar pedidos"},(d,pos)->{
+            if(pos==0){if(r.has("webRevision"))shareLink(r);else readOnlineRequests(r,true,()->shareLink(r),0,true);}else if(pos==1){requestsScreen(r);readOnlineRequests(r,true,()->requestsScreen(r),0,false);}else syncOnline(r,true,()->toast("Rifa e pedidos atualizados."));
         }).setNegativeButton("Fechar",null).show();
+    }
+    void readOnlineRequests(JSONObject r,boolean visible,Runnable finished,int attempts,boolean createIfMissing){
+        if(!foreground||profile==null||!profile.optString("id").equals(r.optString("accountId")))return;
+        if(accountBusy||onlineBusy||managingOrders){if(attempts>=60){if(visible)toast("A sincronização está demorando. Tente novamente.");return;}onlineHandler.postDelayed(()->readOnlineRequests(r,visible,finished,attempts+1,createIfMissing),500);return;}
+        boolean live=false;for(int i=0;i<raffles.length();i++)if(raffles.optJSONObject(i)==r)live=true;if(!live){if(visible)toast("A lista da conta foi atualizada. Abra a rifa novamente.");home();return;}
+        final String base=r.optString("webBase"),token=r.optString("webToken"),path="/api/raffles/"+r.optString("webId");onlineBusy=true;
+        onlineTask(()->{try{return OnlineClient.call(base,path+"/requests","GET",token,-1,null);}catch(Exception e){if(createIfMissing&&!r.has("webRevision")&&"Rifa não encontrada.".equals(e.getMessage()))return new JSONObject().put("newRaffle",true);throw e;}},response->{
+            if(response.optBoolean("newRaffle")){publishSnapshot(r,path,base,token,visible,finished);return;}
+            importRequests(r,response);onlineBusy=false;if(finished!=null)finished.run();
+        },null,visible);
     }
     void shareLink(JSONObject r) {
         String link=r.optString("webBase")+"/?r="+r.optString("webId");
-        new AlertDialog.Builder(this).setTitle("Link da rifa").setMessage(link+"\n\nPedidos não confirmam venda ou pagamento. Notificações em segundo plano podem demorar conforme as restrições do Android.").setNegativeButton("Fechar",null).setNeutralButton("Abrir",(d,w)->startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse(link)))).setPositiveButton("Compartilhar",(d,w)->{Intent share=new Intent(Intent.ACTION_SEND);share.setType("text/plain");share.putExtra(Intent.EXTRA_TEXT,r.optString("name")+"\nEscolha seus números e envie o pedido:\n"+link);startActivity(Intent.createChooser(share,"Enviar link"));}).show();
+        new AlertDialog.Builder(this).setTitle("Link da rifa").setMessage(link+"\n\nEste link abre a rifa já publicada. Para enviar alterações de imagem ou descrição, use Publicar alterações e atualizar pedidos.").setNegativeButton("Fechar",null).setNeutralButton("Abrir",(d,w)->startActivity(new Intent(Intent.ACTION_VIEW,Uri.parse(link)))).setPositiveButton("Compartilhar",(d,w)->{Intent share=new Intent(Intent.ACTION_SEND);share.setType("text/plain");share.putExtra(Intent.EXTRA_TEXT,r.optString("name")+"\nEscolha seus números e envie o pedido:\n"+link);startActivity(Intent.createChooser(share,"Enviar link"));}).show();
     }
     JSONObject publicSnapshot(JSONObject r)throws Exception {
         JSONArray sold=new JSONArray();for(int n=1;n<=r.optInt("total");n++)if(r.optJSONObject("sales").has(""+n))sold.put(n);
@@ -516,7 +526,7 @@ public class MainActivity extends Activity {
         current=r;screen("Pedidos recebidos",true);viewingRequests=true;body.addView(label(r.optString("name"),18));
         body.addView(label("Pedidos só viram vendas após você aceitar. Entram como pagos; você pode alterar para não pago.",13));
         if(r.optJSONArray("webConflicts")!=null&&r.optJSONArray("webConflicts").length()>0)body.addView(label("Há pedidos aceitos em conflito com vendas locais. Os outros pedidos continuam disponíveis para aceitar.",14));
-        button("Atualizar pedidos",body,()->syncOnline(r,true,()->requestsScreen(r)));
+        button("Atualizar pedidos",body,()->readOnlineRequests(r,true,()->requestsScreen(r),0,false));
         button("Resolver pedidos duplicados",body,()->managementRefresh(r,()->duplicatePicker(r)));
         button(showAcceptedOrders?"Ocultar pedidos aceitos":"Mostrar pedidos aceitos",body,()->{showAcceptedOrders=!showAcceptedOrders;requestsScreen(r);});
         JSONArray rows=r.optJSONArray("webRequests");if(rows==null||pendingCount(r)==0)body.addView(label("Nenhum pedido pendente. Mantenha internet e notificações habilitadas para receber avisos.",14));
