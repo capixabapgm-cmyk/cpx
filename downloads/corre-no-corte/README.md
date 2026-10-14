@@ -1,11 +1,14 @@
-# Corre no Corte — Android 0.2.0
+# Corre no Corte — Android 0.3.0
 
-[Baixar o APK atualizado](./Corre-no-Corte-v0.2.apk?raw=true)
+[Baixar o APK atualizado](./Corre-no-Corte-v0.3.apk?raw=true)
 
 Android 8 ou posterior. Arquivo assinado, aproximadamente 23 MB.
 
-Esta atualização corrige a prévia da câmera na horizontal, a orientação usada
-na detecção e a trajetória do recorte vertical que acompanha o atleta.
+Esta atualização mantém a gravação por **2 segundos reais após a última
+detecção do atleta na área marcada**. Se ele reaparecer nesse período, a
+contagem reinicia. Depois disso, o app salva e aguarda o próximo atleta.
+
+Mantém as correções da prévia horizontal e do recorte vertical que acompanha o atleta.
 A captura a 30 fps agora gera câmera lenta de **2×**, com repetição de quadros;
 60 fps gera **2×** e 120 fps gera **4×**. O vídeo final tem até **30 segundos**.
 A repetição a 30 fps aumenta a duração, com menor fluidez de movimento.
@@ -23,10 +26,10 @@ câmera, codecs e GPU do Galaxy A05s; não houve teste físico desta atualizaç�
 O APK solicita somente CAMERA. Modelo e processamento são locais, sem envio
 de imagens a servidores. Os originais são preservados na área privada do app.
 
-SHA-256 da versão 0.2:
+SHA-256 da versão 0.3:
 
 ```text
-8d88dde11bfc525cbc17e1d671023a5d841c01ebc5f84844b7b4a993e53d1d01
+5748ee081646670a4cb95bd27d5af2e6fdf7b80af7258f10dddfdaec044b1da5
 ```
 
-[Versão anterior 0.1](./Corre-no-Corte-v0.1.apk?raw=true)
+[Versão anterior 0.2](./Corre-no-Corte-v0.2.apk?raw=true) · [Versão 0.1](./Corre-no-Corte-v0.1.apk?raw=true)
