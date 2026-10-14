@@ -2,3 +2,4 @@
 8d88dde11bfc525cbc17e1d671023a5d841c01ebc5f84844b7b4a993e53d1d01  Corre-no-Corte-v0.2.apk
 5748ee081646670a4cb95bd27d5af2e6fdf7b80af7258f10dddfdaec044b1da5  Corre-no-Corte-v0.3.apk
 6b51a22c6afd9305b03329f03f614b1c1556053dc6bf518b0d016077b0dc85dd  Corre-no-Corte-v0.4.apk
+603b795ec72266f77ead916d7aafefe8434bf4ad799e8f2f6c66b4f563068428  Corre-no-Corte-v0.5.apk
