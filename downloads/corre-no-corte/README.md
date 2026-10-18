@@ -1,16 +1,20 @@
-# Corre no Corte — Android 0.5.0
+# Corre no Corte — Android 0.6.0
 
-[Baixar o APK atualizado](./Corre-no-Corte-v0.5.apk?raw=true)
+[Baixar o APK atualizado](./Corre-no-Corte-v0.6.apk?raw=true)
 
 Android 8 ou posterior. Arquivo assinado, aproximadamente 23 MB.
 
-Esta atualização acrescenta **Priorizar nitidez**, ligado por padrão:
+Esta atualização acrescenta **Ajustes da imagem**:
 
-- Em câmeras compatíveis, busca 1/500 s ou 1/1000 s, ajustando o ISO conforme a luz.
-- Em sol forte, pode usar velocidades ainda maiores para evitar superexposição.
-- Mostra obturador e ISO confirmados pela câmera. Sem suporte, em pouca luz ou
-  após recusa do controle, usa exposição automática e informa o estado.
-- A preferência fica salva e pode ser alterada com o monitoramento parado.
+- Brilho, contraste, vibração das cores e nitidez com prévia de um quadro.
+- Defina uma vez e toque **Aplicar aos próximos vídeos**. A configuração fica salva.
+- Os ajustes são aplicados automaticamente antes de salvar o arquivo na pasta
+  da galeria; não é necessário editar cada passagem.
+- **Zerar ajustes** volta ao neutro. Confirme em **Aplicar aos próximos vídeos**.
+
+Trechos já enfileirados mantêm o preset anterior, inclusive em retomadas.
+Vídeos já prontos não são reprocessados. A nitidez da imagem realça contornos;
+o modo **Priorizar nitidez** continua controlando o obturador em câmeras compatíveis.
 
 Para liberar o controle manual, o modo de nitidez pode selecionar 30 ou 60 fps.
 Desligando a opção, o app volta a tentar 120 fps quando disponível. O suporte
@@ -34,16 +38,16 @@ na horizontal. Marque a área da pista e toque **Iniciar**. Ao terminar, use
 **Parar e finalizar**; confira os arquivos em **Meus vídeos** ou na galeria.
 
 Compilação, assinatura, rastreador, buffer, orientação, centralização, duração e
-política de exposição foram verificados por testes automatizados. Esta versão ainda precisa de confirmação com a
+política de exposição e filtros foram verificados por testes automatizados. Esta versão ainda precisa de confirmação com a
 câmera, codecs e GPU do Galaxy A05s; não houve teste físico desta atualização.
 
 O APK solicita somente CAMERA. Modelo e processamento são locais, sem envio
 de imagens a servidores. Os originais são preservados na área privada do app.
 
-SHA-256 da versão 0.5:
+SHA-256 da versão 0.6:
 
 ```text
-603b795ec72266f77ead916d7aafefe8434bf4ad799e8f2f6c66b4f563068428
+5051b7ff92a89dea793a01204855b294375e281f3a28a9ebcb55adb309467c62
 ```
 
-[Versão anterior 0.4](./Corre-no-Corte-v0.4.apk?raw=true) · [Versão 0.3](./Corre-no-Corte-v0.3.apk?raw=true) · [Versão 0.2](./Corre-no-Corte-v0.2.apk?raw=true) · [Versão 0.1](./Corre-no-Corte-v0.1.apk?raw=true)
+[Versão anterior 0.5](./Corre-no-Corte-v0.5.apk?raw=true) · [Versão 0.4](./Corre-no-Corte-v0.4.apk?raw=true) · [Versão 0.3](./Corre-no-Corte-v0.3.apk?raw=true) · [Versão 0.2](./Corre-no-Corte-v0.2.apk?raw=true) · [Versão 0.1](./Corre-no-Corte-v0.1.apk?raw=true)
