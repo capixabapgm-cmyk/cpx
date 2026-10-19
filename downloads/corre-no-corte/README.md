@@ -1,45 +1,46 @@
-# Corre no Corte — Android 0.7.0
+# Corre no Corte — Android 0.8.0
 
-[Baixar o APK atualizado](./Corre-no-Corte-v0.7.apk?raw=true)
+[Baixar o APK atualizado](./Corre-no-Corte-v0.8.apk?raw=true)
 
 Android 8 ou posterior. Arquivo assinado, aproximadamente 23 MB.
 
-Esta atualização melhora o **acompanhamento de corredores rápidos**:
+Esta atualização adiciona **Modo da câmera** para comparar resoluções e taxas
+ de quadros no A05s, A16 e A17:
 
-- Análise da câmera com menos cópias e próxima execução agendada ao terminar a anterior.
-- Associação mais tolerante ao deslocamento rápido, com proteções contra troca de atleta.
-- Prévia mais ágil, com previsão curta, limitada e suavemente reduzida se os dados envelhecerem.
-- Frequência real de atualização mostrada na lateral do app.
-- **Revisão do vídeo horizontal original antes do recorte vertical**, com detecções adicionais
-  e tempos reais para refinar o enquadramento do atleta selecionado.
+- Com o monitoramento parado, abra **Modo da câmera**, selecione uma opção e toque **Aplicar**.
+- A lista mostra as combinações de resolução/FPS anunciadas para o aplicativo e
+  compatíveis com um encoder AVC. Prioriza Full HD, HD e VGA, com modos alternativos quando necessário.
+- Teste **1280 × 720** e **1920 × 1080** a 30 ou 60 fps, e **120 fps** quando aparecer.
+- A escolha fica salva e tem prioridade sobre a seleção automática de **Priorizar nitidez**.
+- Em 120 fps, o obturador é automático; a preferência de nitidez continua salva.
+- **Automático** mantém a seleção anterior e suas tentativas de recuperação.
+- Se um modo explícito for recusado ao abrir, o app avisa. Escolha outro modo ou
+  **Automático**; não há troca silenciosa de resolução/FPS.
 
-A revisão aumenta o tempo para finalizar os vídeos. **Exportar durante espera** começa
- desligado para priorizar o rastreio. Ao terminar, toque **Parar e finalizar** e aguarde
-**Revisando atleta no original** e a geração do vertical. Se a revisão não funcionar nos
- decodificadores disponíveis, o app informa e usa o rastreio da captura. Os originais
- horizontais são preservados.
+A lista varia entre aparelhos. O seletor não força 120 fps se a câmera não liberar
+essa combinação para o app. Um modo anunciado ainda depende da aceitação do driver.
 
-Mantém brilho, contraste, vibração e nitidez definidos uma vez e aplicados automaticamente,
-controle de obturador em câmeras compatíveis, **2 segundos reais após a última detecção
-na área marcada**, vídeos verticais 9:16 e teto de **30 segundos finais**.
-30 fps gera câmera lenta de 2× com quadros repetidos; 60 fps, 2×; 120 fps, 4×.
+Instale por cima da versão anterior, **sem desinstalar**, para manter os dados.
+Confira a resolução/FPS abertos na lateral. Grave novos trechos e use
+**Parar e finalizar** para gerar os vídeos verticais. Os arquivos já concluídos
+mantêm seu processamento original.
 
-Instale por cima da versão anterior, **sem desinstalar**, para manter os dados. Grave
-novos trechos para conferir a atualização: arquivos já prontos mantêm o processamento
-anterior. Abra o app, fixe o celular na horizontal, marque a pista e toque **Iniciar**.
-Os vídeos concluídos aparecem em **Meus vídeos** e na galeria.
+Mantém rastreio rápido, revisão do atleta no original, ajustes automáticos de
+brilho/contraste/vibração/nitidez e os **2 segundos reais após a última detecção
+na área marcada**. O vídeo final continua vertical, 720 × 1280 a 30 fps, com até
+**30 segundos finais**: captura30fps→lenta2× com repetição;60fps→2×;120fps→4×.
+A revisão antes do recorte aumenta o tempo de processamento e preserva os originais.
 
-Build, assinatura e testes de rastreio, revisão de trajetória, YUV, orientação, duração,
-exposição e filtros passaram. **Não houve teste físico desta atualização no Galaxy A05s**;
-a velocidade efetiva depende do aparelho, da luz e do aquecimento. Cruzamentos e roupas
-iguais ainda podem causar perdas, e o recorte respeita os limites da gravação original.
+Build, assinatura e testes passaram, incluindo **199 verificações da política de modos**.
+Ainda não houve teste físico desta atualização: a lista real, a abertura e o
+ desempenho contínuo devem ser conferidos no aparelho.
 
-O APK solicita somente CAMERA. Detecção e processamento ocorrem no aparelho.
+O APK solicita somente CAMERA. Detecção e processamento ocorrem no celular.
 
-SHA-256 da versão 0.7:
+SHA-256 da versão 0.8:
 
 ```text
-f96ccf9116e79a687005f74070fcc3f7902fe6acf9f73ef1afcc70d8da1b6e64
+097ed93b2d6e5010ae9c64ebf6b45357981b8aaa7f9814dd6da931aadfb7cc3b
 ```
 
-[Versão 0.6](./Corre-no-Corte-v0.6.apk?raw=true) · [Versão 0.5](./Corre-no-Corte-v0.5.apk?raw=true) · [Versão 0.4](./Corre-no-Corte-v0.4.apk?raw=true) · [Versão 0.3](./Corre-no-Corte-v0.3.apk?raw=true) · [Versão 0.2](./Corre-no-Corte-v0.2.apk?raw=true) · [Versão 0.1](./Corre-no-Corte-v0.1.apk?raw=true)
+[Versão 0.7](./Corre-no-Corte-v0.7.apk?raw=true) · [Versão 0.6](./Corre-no-Corte-v0.6.apk?raw=true) · [Versão 0.5](./Corre-no-Corte-v0.5.apk?raw=true) · [Versão 0.4](./Corre-no-Corte-v0.4.apk?raw=true) · [Versão 0.3](./Corre-no-Corte-v0.3.apk?raw=true) · [Versão 0.2](./Corre-no-Corte-v0.2.apk?raw=true) · [Versão 0.1](./Corre-no-Corte-v0.1.apk?raw=true)
