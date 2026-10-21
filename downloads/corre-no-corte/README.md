@@ -1,35 +1,44 @@
-# Corre no Corte — Android 0.10.0
+# Corre no Corte — Android 0.11.0
 
-[Baixar o APK atualizado](./Corre-no-Corte-v0.10.apk?raw=true)
+[Baixar o APK atualizado](./Corre-no-Corte-v0.11.apk?raw=true)
 
-Android 8 ou posterior. Arquivo assinado, aproximadamente 23 MB.
+Android 8 ou posterior. APK assinado, aproximadamente 23 MB.
 Instale por cima da versão anterior, **sem desinstalar**, para manter os dados.
 
-**Meus vídeos** agora serve apenas como atalho para a galeria do celular,
-no álbum **Corre no Corte**. A lista e os botões de reprodução/compartilhamento
-internos foram removidos. Assista e compartilhe pela própria galeria.
+Esta versão adiciona **Modo vertical** e mantém **Iniciar / Parar e finalizar**
+fixo no topo da área de controles, fora da rolagem, nos dois modos.
 
-O atalho de álbum depende da galeria instalada. Quando ele não estiver disponível,
-o app abre a galeria e orienta **Álbuns → Corre no Corte**. A galeria também pode
-aceitar o atalho e ignorar o filtro; nesse caso, selecione o álbum manualmente.
-A pasta aparece após o primeiro vídeo ser salvo na galeria; vídeos ainda em
-processamento ou cuja cópia para a galeria falhou não aparecem nela.
+1. Com o monitoramento parado, toque **Modo vertical**. A tela passa para retrato;
+   a preferência fica salva. O operador enquadra e acompanha pelo tripé.
+2. Toque **Iniciar** para armar a detecção. Uma pessoa em movimento começa a gravação.
+3. Depois de começar, a gravação continua enquanto houver pessoa visível,
+   **mesmo parada**. Sem pessoa por **2 segundos**, encerra e espera outra passagem.
+4. Use **Parar e finalizar** para encerrar manualmente e processar a fila.
+   Trechos longos são divididos em arquivos de até **30 segundos finais**.
 
-Abrir a galeria sai da tela de captura e encerra o monitoramento atual.
-A fila é preservada. Para voltar a gravar, retorne ao app e toque **Iniciar**.
-A v0.9 continua permitindo pausar a edição para liberar a câmera com um toque.
+O modo vertical preserva o quadro inteiro, sem recentralizar o atleta ou fazer
+segunda análise da trajetória. A saída pode chegar a **1080 × 1920** quando
+captura e encoder permitirem; HD usa **720 × 1280**. Fontes menores mantêm seu
+limite de detalhe e proporções diferentes recebem barras. Não recupera corpo
+fora da cena. O horizontal conserva recorte móvel e revisão do original.
 
-Mantém modos de resolução/FPS, rastreio, câmera lenta, ajustes de imagem,
-**2 segundos reais** após a última detecção e até **30 segundos finais**.
+A detecção de movimento compensa translação e exposição da cena para reduzir
+disparos pelo giro do tripé. Fundo liso, parallax, luz local e oclusões ainda
+podem impedir ou confundir a detecção; valide nas condições reais de uso.
 
-Build, assinatura e testes automatizados passaram. Ainda falta conferir a
-abertura do álbum e o retorno ao aplicativo em um Galaxy.
-O APK continua solicitando somente CAMERA; não pede acesso geral à galeria.
+Mantém câmera lenta, filtros, galeria externa e prioridade para retomar a captura.
+Exportar durante espera continua opcional e depende dos recursos anunciados
+pelo aparelho; com um encoder, a fila aguarda parar a captura.
 
-SHA-256 da versão 0.10:
+Build, assinatura e testes automatizados passaram: 124 sequências sintéticas de
+movimento, 144 verificações de gravação e 4020 de enquadramento, além das
+regressões anteriores. **Não houve teste físico desta versão nos Galaxy.**
+O APK solicita somente CAMERA e processa as imagens no celular.
+
+SHA-256 da versão 0.11:
 
 ```text
-04ac9570b946c63504f9fc73b39928c8e35a857061a5f2b76d730acb67ee73f8
+6f9576e28eeff3b41776507cbfbc55acfd4d5f7ad9242c05e0364fb65bc59a8a
 ```
 
-[Versão 0.9](./Corre-no-Corte-v0.9.apk?raw=true) · [Versão 0.8](./Corre-no-Corte-v0.8.apk?raw=true) · [Versão 0.7](./Corre-no-Corte-v0.7.apk?raw=true) · [Versão 0.6](./Corre-no-Corte-v0.6.apk?raw=true) · [Versão 0.5](./Corre-no-Corte-v0.5.apk?raw=true) · [Versão 0.4](./Corre-no-Corte-v0.4.apk?raw=true) · [Versão 0.3](./Corre-no-Corte-v0.3.apk?raw=true) · [Versão 0.2](./Corre-no-Corte-v0.2.apk?raw=true) · [Versão 0.1](./Corre-no-Corte-v0.1.apk?raw=true)
+[Versão 0.10](./Corre-no-Corte-v0.10.apk?raw=true) · [Versão 0.9](./Corre-no-Corte-v0.9.apk?raw=true) · [Versão 0.8](./Corre-no-Corte-v0.8.apk?raw=true) · [Versão 0.7](./Corre-no-Corte-v0.7.apk?raw=true) · [Versão 0.6](./Corre-no-Corte-v0.6.apk?raw=true) · [Versão 0.5](./Corre-no-Corte-v0.5.apk?raw=true) · [Versão 0.4](./Corre-no-Corte-v0.4.apk?raw=true) · [Versão 0.3](./Corre-no-Corte-v0.3.apk?raw=true) · [Versão 0.2](./Corre-no-Corte-v0.2.apk?raw=true) · [Versão 0.1](./Corre-no-Corte-v0.1.apk?raw=true)
